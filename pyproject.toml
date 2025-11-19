@@ -5,7 +5,6 @@ description = "Frida version management tool"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "questionary>=2.1.1",
     "typer>=0.20.0",
 ]
 
@@ -15,3 +14,7 @@ friman = "friman.main:main"
 [build-system]
 requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["friman*"]
