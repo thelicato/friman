@@ -2,8 +2,11 @@
 This module contains multiple helper function used throughout the codebase.
 """
 import os
+import pathlib
 import json
+import lzma
 import http.client
+from urllib.parse import urlparse, urljoin
 from datetime import datetime
 from friman.utils import definitions, exceptions
 from friman.utils.logger import frimanlog
@@ -25,9 +28,8 @@ def ensure_folders():
     # Create the .friman folder in $HOME if missing
     create_folder_if_missing(definitions.FRIMAN_FOLDER)
 
-    # Create the env and server folders within the above one if missing
+    # Create the env folder within the above one if missing
     create_folder_if_missing(definitions.FRIMAN_ENV_FOLDER)
-    create_folder_if_missing(definitions.FRIMAN_SERVER_FOLDER)
 
 def set_env_if_empty(env_var, env_value):
     """Set an ENV variable if empty, otherwise don't change it (ENV vars take precedence!)"""
@@ -50,20 +52,53 @@ def get_github_headers():
         headers["Authorization"] = f"token {github_token}"
     return headers
 
-def make_request(host, url, headers):
+
+def make_request(host, url, headers, follow_redirects=False, max_redirects=5):
     """Performs an HTTPS GET request and returns the response."""
-    conn = http.client.HTTPSConnection(host)
-    conn.request("GET", url, headers=headers)
-    response = conn.getresponse()
-    data = response.read()
-    conn.close()
 
-    if response.status == 403:
-        raise exceptions.RateLimitException(f"Status code {response.status} - error {data.decode()} - url {url}")
-    elif response.status != 200:
-        raise Exception(f"Status code {response.status} - error {data.decode()} - url {url}")
+    redirects = 0
+    current_host = host
+    current_url = url
 
-    return data
+    while True:
+        conn = http.client.HTTPSConnection(current_host)
+        conn.request("GET", current_url, headers=headers)
+        response = conn.getresponse()
+
+        status = response.status
+        data = response.read()
+        conn.close()
+
+        # Handle redirect
+        if follow_redirects and status in (301, 302, 303, 307, 308):
+            if redirects >= max_redirects:
+                raise Exception("Too many redirects")
+
+            location = response.getheader("Location")
+            if not location:
+                raise Exception("Redirect without Location header")
+
+            # Build new absolute URL
+            if location.startswith("http"):
+                parsed = urlparse(location)
+                current_host = parsed.netloc
+                current_url = parsed.path or "/"
+                if parsed.query:
+                    current_url += "?" + parsed.query
+            else:
+                # relative redirect
+                current_url = urljoin(current_url, location)
+
+            redirects += 1
+            continue  # perform another request
+
+        # Normal error handling
+        if status == 403:
+            raise exceptions.RateLimitException(f"Status code {response.status} - error {data.decode()} - url {url}")
+        elif status != 200:
+            raise Exception(f"{status} - {data.decode()} - url {current_url}")
+
+        return data
 
 def get_all_github_tags(repo: str):
     """Fetches all tags from the GitHub repository, handling pagination."""
@@ -130,3 +165,30 @@ def get_frida_tags():
 def get_installed_versions():
     installed_versions = [f for f in os.listdir(definitions.FRIMAN_ENV_FOLDER) if os.path.isdir(os.path.join(definitions.FRIMAN_ENV_FOLDER, f))]
     return installed_versions
+
+def get_current_version_in_use():
+    symlink_path = pathlib.Path(definitions.FRIMAN_CURRENT_FOLDER).resolve()
+
+    if symlink_path.exists():
+        return symlink_path.name
+    else:
+        return None
+    
+def extract_xz(input_path, delete_original=True):
+    # Remove .xz extension to determine output path
+    if not input_path.endswith(".xz"):
+        raise ValueError("Input file must end with .xz")
+
+    # Output is the same path without .xz
+    output_path = input_path[:-3]
+    output_path = os.path.abspath(output_path)
+
+    with lzma.open(input_path, 'rb') as compressed:
+        with open(output_path, 'wb') as out:
+            out.write(compressed.read())
+
+    if delete_original:
+        os.remove(input_path)
+
+    frimanlog.debug(f"Extracted to: {output_path}")
+    return output_path
