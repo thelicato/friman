@@ -33,12 +33,19 @@ def set_env_if_empty(env_var, env_value):
     """Set an ENV variable if empty, otherwise don't change it (ENV vars take precedence!)"""
     os.environ[env_var] = os.environ.get(env_var, env_value)
 
-def get_github_headers():
-    """Returns GitHub authentication headers if a token is available."""
-    github_token = os.getenv('GITHUB_TOKEN')
+def get_base_headers():
+    """Get basic request headers"""
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.3"
     }
+    return headers
+
+
+def get_github_headers():
+    """Returns GitHub authentication headers if a token is available."""
+    github_token = os.getenv('GITHUB_TOKEN')
+    headers = get_base_headers()
+
     if github_token:
         headers["Authorization"] = f"token {github_token}"
     return headers
@@ -76,6 +83,16 @@ def get_all_github_tags(repo: str):
         tags.extend([tag["name"] for tag in results])
         page += 1
 
+    return tags
+
+def get_pypi_versions(package: str):
+    """Fetches all the available versions of a package from PyPI"""
+    tags = []
+    url = f"{definitions.PYPI_API['pypi']}/{package}{definitions.PYPI_API['json']}"
+
+    data = make_request(definitions.PYPI_API['base'], url, get_base_headers())
+    results = json.loads(data)
+    tags = list(results["releases"].keys())
     return tags
 
 def get_github_release_assets(repo: str, tag: str):

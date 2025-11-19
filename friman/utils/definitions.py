@@ -32,5 +32,11 @@ GITHUB_API = {
     'tags': "/tags"
 }
 
+PYPI_API = {
+    'base': "pypi.org",
+    'pypi': '/pypi',
+    'json': '/json'
+}
+
 # Frida
 FRIDA_REPO = "frida/frida"

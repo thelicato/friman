@@ -3,6 +3,7 @@ import sys
 import subprocess
 from typing_extensions import Annotated
 import typer
+from friman.commands import update
 from friman.utils import definitions, helpers
 from friman.utils.logger import frimanlog
 
@@ -14,8 +15,13 @@ def install(
     force: bool = typer.Option(False, "--force", "-f", help="Force install."),
 ):
     """Install a <version> of Frida."""
-    # TODO: Print something when the last is not updated in a while
+    # TODO: Print something when the config is not updated in a while
     frida_tags = helpers.get_frida_tags()
+
+    if len(frida_tags) == 0:
+        frimanlog.error("The local list of available Frida versions is empty, running update...")
+        update.update()
+
     clean_version = version.replace("v","")
 
     if clean_version.replace("v","") not in frida_tags:

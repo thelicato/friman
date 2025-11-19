@@ -3,7 +3,6 @@ import typer
 from friman.utils import definitions
 from friman.utils.logger import frimanlog
 
-
 app = typer.Typer()
 
 @app.command()

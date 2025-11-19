@@ -14,8 +14,7 @@ def update():
     frimanlog.info("Setting up the list of available frida versions...")
     try:
         current_config = helpers.get_current_config()
-        frida_tags = helpers.get_all_github_tags(definitions.FRIDA_REPO)
-        # Simulated update process
+        frida_tags = helpers.get_pypi_versions("frida")
         current_config["tags"] = frida_tags
         current_config["updated_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         with open(definitions.FRIMAN_CONFIG_FILE, "w") as f:
