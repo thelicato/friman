@@ -22,7 +22,6 @@ def version_callback(value: bool):
         raise typer.Exit()
     else:
         helpers.ensure_folders()
-        print()
 
 def debug_callback(value: bool):
     helpers.set_env_if_empty(definitions.FRIMAN_DEBUG, str(int(value)))  # "1" if True, "0" otherwise
