@@ -1,5 +1,5 @@
 import typer
-from friman.utils import helpers
+from friman.utils import helpers, definitions
 from friman.utils.logger import frimanlog
 
 app = typer.Typer()
@@ -12,6 +12,12 @@ def list():
         frimanlog.error("No installed versions")
         raise typer.Exit()
         
+    current_version = helpers.get_current_version_in_use()
+
     frimanlog.info("Installed versions:")
-    for version in installed_versions:
-        frimanlog.info(f"\t{version}")
+    sorted_tags = sorted(installed_versions, key=lambda s: tuple(map(int, s.split("."))))
+    for version in sorted_tags:
+        if (current_version == version):
+            frimanlog.success(f"  {version} [*]")
+        else:
+            frimanlog.info(f"  {version}")
