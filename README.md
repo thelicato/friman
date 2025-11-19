@@ -79,7 +79,7 @@ Specific help commands are available in the below sections.
 
 ### `update` command
 
-```sh
+```
 Usage: friman update [OPTIONS]
 
   Update the local list of available Frida versions.
@@ -97,7 +97,7 @@ Options:
 
 ### `install` command
 
-```sh
+```
 Usage: friman install [OPTIONS] version
 
   Install a <version> of Frida.
@@ -119,7 +119,7 @@ Options:
 
 ### `uninstall` command
 
-```sh
+```
 Usage: friman uninstall [OPTIONS] version
 
   Uninstall a <version> of Frida.
@@ -140,7 +140,7 @@ Options:
 
 ### `use` command
 
-```sh
+```
 Usage: friman use [OPTIONS] version
 
   Use <version>.
@@ -161,7 +161,7 @@ Options:
 
 ### `disable` command
 
-```sh
+```
 Usage: friman disable [OPTIONS]
 
   Disable friman.
@@ -178,6 +178,16 @@ Options:
 </summary>
 
 ### `current` command
+
+```
+Usage: friman current [OPTIONS]
+
+  Display the currently activated version of Frida.
+
+Options:
+  -h, --help  Show this message and exit.
+```
+
 </details>
 
 <details>
@@ -187,10 +197,10 @@ Options:
 
 ### `list` command
 
-```sh
-Usage: friman current [OPTIONS]
+```
+Usage: friman list [OPTIONS]
 
-  Display the currently activated version of Frida.
+  List all the installed versions.
 
 Options:
   -h, --help  Show this message and exit.
@@ -205,7 +215,7 @@ Options:
 
 ### `ensurepath` command
 
-```sh
+```
 Usage: friman ensurepath [OPTIONS]
 
   Ensure friman directories are correctly set.
@@ -223,7 +233,7 @@ Options:
 
 ### `download` command
 
-```sh
+```
 Usage: friman download [OPTIONS] type platform
 
   Download a specific release file (only server and gadget).
@@ -246,7 +256,7 @@ Options:
 
 ### `push-server` command
 
-```sh
+```
 Usage: friman push-server [OPTIONS] device_id platform
 
   Pushes a the Frida server into the selected ANDROID device.
