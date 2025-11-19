@@ -8,3 +8,10 @@ dependencies = [
     "questionary>=2.1.1",
     "typer>=0.20.0",
 ]
+
+[project.scripts]
+friman = "friman.main:main"
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
