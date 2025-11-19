@@ -9,10 +9,21 @@ from friman.utils.logger import frimanlog
 
 app = typer.Typer()
 
+def list_callback(list):
+    frida_tags = helpers.get_frida_tags()
+
+    if (list):
+        frimanlog.info("Available versions:")
+        sorted_tags = sorted(frida_tags, key=lambda s: tuple(map(int, s.split("."))))
+        for tag in sorted_tags:
+            frimanlog.info(f"  {tag}")
+        raise typer.Exit()
+
 @app.command()
 def install(
     version: Annotated[str, typer.Argument(help="The version of Frida to install", metavar="version")],
     force: bool = typer.Option(False, "--force", "-f", help="Force install."),
+    list: bool = typer.Option(None,"--list", help="Show all the installable versions and exit.",callback=list_callback,is_eager=True)
 ):
     """Install a <version> of Frida."""
     # TODO: Print something when the config is not updated in a while
@@ -21,11 +32,14 @@ def install(
     if len(frida_tags) == 0:
         frimanlog.error("The local list of available Frida versions is empty, running update...")
         update.update()
+        frida_tags = helpers.get_frida_tags()
 
     clean_version = version.replace("v","")
 
     if clean_version.replace("v","") not in frida_tags:
-        frimanlog.error(f"Version '{clean_version}' is not in the list of available Frida versions, currently available versions are: {frida_tags}. Run 'friman update' to get the list of all the available versions.")
+        frimanlog.error(f"Version '{clean_version}' is not in the list of available Frida versions")
+        frimanlog.error("Print the list of available versions with 'friman install --list'")
+        frimanlog.error("Run 'friman update' to update the local list of all the available versions.")
         raise typer.Exit(1)
 
     frimanlog.info(f"Downloading version '{clean_version}'...")

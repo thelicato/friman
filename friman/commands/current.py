@@ -1,6 +1,5 @@
-import pathlib
 import typer
-from friman.utils import definitions
+from friman.utils import helpers
 from friman.utils.logger import frimanlog
 
 app = typer.Typer()
@@ -8,9 +7,9 @@ app = typer.Typer()
 @app.command()
 def current():
     """Display the currently activated version of Frida."""
-    symlink_path = pathlib.Path(definitions.FRIMAN_CURRENT_FOLDER).resolve()
+    current_version = helpers.get_current_version_in_use()
 
-    if symlink_path.exists():
-        frimanlog.success(f"Version in use is {symlink_path.name}")
+    if current_version != None:
+        frimanlog.success(f"Version in use is {current_version}")
     else:
         frimanlog.error("No version is currently set")
