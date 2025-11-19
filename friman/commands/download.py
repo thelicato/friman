@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from urllib.parse import urlparse
 from typing_extensions import Annotated
 import typer
@@ -26,7 +27,7 @@ def download(
         frimanlog.error("Current version is currently unset.")
         raise typer.Exit(1)
     
-    output_dir = os.path.abspath(out_dir)
+    output_dir = os.path.abspath(out_dir if out_dir != None else Path.cwd())
     if not os.access(output_dir, os.W_OK):
         frimanlog.error(f"No permissions to save files in '{output_dir}'.")
         raise typer.Exit(1)

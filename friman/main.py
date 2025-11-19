@@ -20,7 +20,6 @@ def version_callback(value: bool):
         print(__version__)
         raise typer.Exit()
     else:
-        helpers.banner(__version__)
         helpers.ensure_folders()
         print()
 
