@@ -1,17 +1,16 @@
 <h1 align="center">
-  <br>
+    <br />
     <img src="./logo.png" alt= "friman" width="200px">
-</h1>
-<h2 align="center">
+    <br />
     <b>friman</b>
-<h2>
+</h1>
 
 <p align="center">
     <a href="./README.md"><img src="https://img.shields.io/badge/Documentation-complete-green.svg?style=flat"></a>
     <a href="./LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg"></a>
 </p>
 
-Do you ever feel that finding the right Frida version for the job is like threading a needle? With different projects, devices, and debugging scenarios all requiring specific builds, keeping track of Frida versions can quickly become a tedious balancing act. `friman` (pronounced "free man") is designed to solve exactly this problem.
+Do you ever feel that finding the right Frida version for the job is like threading a needle? With different projects, devices, and debugging scenarios all requiring specific builds, keeping track of Frida versions can quickly become a tedious balancing act. `friman` (pronounced "*free man*") is designed to solve exactly this problem.
 
 ## Overview
 
@@ -75,47 +74,107 @@ Specific help commands are available in the below sections.
 
 <details>
 <summary>
-WIP
+<code>update</code> command
 </summary>
 
 ### `update` command
+
+```sh
+Usage: friman update [OPTIONS]
+
+  Update the local list of available Frida versions.
+
+Options:
+  -h, --help  Show this message and exit.
+```
+
 </details>
 
 <details>
 <summary>
-WIP
+<code>install</code> command
 </summary>
 
 ### `install` command
+
+```sh
+Usage: friman install [OPTIONS] version
+
+  Install a <version> of Frida.
+
+Arguments:
+  version  The version of Frida to install  \[required]
+
+Options:
+  -f, --force  Force install.
+  --list       Show all the installable versions and exit.
+  -h, --help   Show this message and exit.
+```
 </details>
 
 <details>
 <summary>
-WIP
+<code>uninstall</code> command
 </summary>
 
 ### `uninstall` command
+
+```sh
+Usage: friman uninstall [OPTIONS] version
+
+  Uninstall a <version> of Frida.
+
+Arguments:
+  version  The version of Frida to uninstall  \[required]
+
+Options:
+  -h, --help  Show this message and exit.
+```
+
 </details>
 
 <details>
 <summary>
-WIP
+<code>use</code> command
 </summary>
 
 ### `use` command
+
+```sh
+Usage: friman use [OPTIONS] version
+
+  Use <version>.
+
+Arguments:
+  version  The version of Frida to uninstall  \[required]
+
+Options:
+  -h, --help  Show this message and exit.
+```
+
 </details>
 
 <details>
 <summary>
-WIP
+<code>disable</code> command
 </summary>
 
 ### `disable` command
+
+```sh
+Usage: friman disable [OPTIONS]
+
+  Disable friman.
+
+Options:
+  -h, --help  Show this message and exit.
+```
+
 </details>
 
 <details>
 <summary>
-WIP
+<code>current</code> command
 </summary>
 
 ### `current` command
@@ -123,34 +182,84 @@ WIP
 
 <details>
 <summary>
-WIP
+<code>list</code> command
 </summary>
 
 ### `list` command
+
+```sh
+Usage: friman current [OPTIONS]
+
+  Display the currently activated version of Frida.
+
+Options:
+  -h, --help  Show this message and exit.
+```
+
 </details>
 
 <details>
 <summary>
-WIP
+<code>ensurepath</code> command
 </summary>
 
 ### `ensurepath` command
+
+```sh
+Usage: friman ensurepath [OPTIONS]
+
+  Ensure friman directories are correctly set.
+
+Options:
+  -h, --help  Show this message and exit.
+```
+
 </details>
 
 <details>
 <summary>
-WIP
+<code>download</code> command
 </summary>
 
 ### `download` command
+
+```sh
+Usage: friman download [OPTIONS] type platform
+
+  Download a specific release file (only server and gadget).
+
+Arguments:
+  type      The selected asset type  \[required]
+  platform  The platform to use  \[required]
+
+Options:
+  -o, --output TEXT  Select the folder where to download the file.
+  -h, --help         Show this message and exit.
+```
+
 </details>
 
 <details>
 <summary>
-WIP
+<code>push-server</code> command
 </summary>
 
 ### `push-server` command
+
+```sh
+Usage: friman push-server [OPTIONS] device_id platform
+
+  Pushes a the Frida server into the selected ANDROID device.
+
+Arguments:
+  device_id  The selected ANDROID device  \[required]
+  platform   The platform of the device  \[required]
+
+Options:
+  --list      Show all the USB devices and exit.
+  -h, --help  Show this message and exit.
+```
+
 </details>
 
 ## Contributing
