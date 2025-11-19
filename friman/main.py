@@ -3,7 +3,8 @@ from friman import __title__, __version__, __description__
 from friman.commands import update, install, uninstall, use, disable, current, list, ensurepath, download, pushserver
 from friman.utils import helpers, definitions
 
-app = typer.Typer(add_completion=False, context_settings={"help_option_names": ["-h", "--help"]})
+app = typer.Typer(add_completion=False, context_settings={"help_option_names": ["-h", "--help"]}, rich_markup_mode=None)
+
 app.add_typer(update.app)
 app.add_typer(install.app)
 app.add_typer(uninstall.app)
