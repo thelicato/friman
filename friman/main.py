@@ -1,49 +1,19 @@
 import typer
 from friman import __title__, __version__, __description__
-from friman.utils import helpers
+from friman.commands import update, install, uninstall, use, disable, current, list, ensurepath, download, pushserver
+from friman.utils import helpers, definitions
 
 app = typer.Typer(add_completion=False, context_settings={"help_option_names": ["-h", "--help"]})
-
-@app.command()
-def install():
-    """Install a <version> of Frida."""
-    pass
-
-@app.command()
-def uninstall():
-    """Uninstall a <version> of Frida."""
-    pass
-
-@app.command()
-def use():
-    """Modify PATH to use <version>."""
-    pass
-
-@app.command()
-def list():
-    """List all the installed versions."""
-    pass
-
-@app.command()
-def current():
-    """Display the currently activated version of Frida."""
-    pass
-
-@app.command()
-def ensurepath():
-    """Ensure friman directories are correctly set."""
-    pass
-
-@app.command()
-def download():
-    """Download a specific release file (e.g. server, gadget)."""
-    pass
-
-@app.command()
-def push_server():
-    """Pushes a the Frida server into the selected device."""
-    pass
-
+app.add_typer(update.app)
+app.add_typer(install.app)
+app.add_typer(uninstall.app)
+app.add_typer(use.app)
+app.add_typer(disable.app)
+app.add_typer(current.app)
+app.add_typer(list.app)
+app.add_typer(ensurepath.app)
+app.add_typer(download.app)
+app.add_typer(pushserver.app)
 
 def version_callback(value: bool):
     if value:
@@ -52,7 +22,10 @@ def version_callback(value: bool):
     else:
         helpers.banner(__version__)
         helpers.ensure_folders()
+        print()
 
+def debug_callback(value: bool):
+    helpers.set_env_if_empty(definitions.FRIMAN_DEBUG, str(int(value)))  # "1" if True, "0" otherwise
 
 @app.callback(invoke_without_command=True)
 def cli(
@@ -64,6 +37,14 @@ def cli(
         help="Show the application's version and exit.",
         callback=version_callback,
         is_eager=True,   # ensures -v is processed before other logic
+    ),
+    _debug: bool = typer.Option(
+        False,
+        "--debug",
+        "-d",
+        help="Show debug output.",
+        callback=debug_callback,
+        is_eager=True,   # ensures -d is processed before other logic
     ),
 ):
     # If no subcommand was given then show help
