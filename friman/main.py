@@ -1,6 +1,6 @@
 import typer
 from friman import __title__, __version__, __description__
-from friman.utils.helpers import banner
+from friman.utils import helpers
 
 app = typer.Typer(add_completion=False, context_settings={"help_option_names": ["-h", "--help"]})
 
@@ -50,7 +50,8 @@ def version_callback(value: bool):
         print(__version__)
         raise typer.Exit()
     else:
-        banner(__version__)
+        helpers.banner(__version__)
+        helpers.ensure_folders()
 
 
 @app.callback(invoke_without_command=True)
