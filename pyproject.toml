@@ -1,0 +1,20 @@
+[project]
+name = "friman"
+version = "0.1.0"
+description = "Frida version management tool"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "typer>=0.20.0",
+]
+
+[project.scripts]
+friman = "friman.main:main"
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["friman*"]
