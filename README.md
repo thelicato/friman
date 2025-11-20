@@ -26,6 +26,8 @@ Do you ever feel that finding the right Frida version for the job is like thread
 
 Its goal is to make *Frida* version management **as frictionless as possible**.
 
+![Terminal](./terminal.gif)
+
 ## Install
 
 The recommended installation method is directly from *GitHub*:
@@ -49,7 +51,7 @@ friman update # Update the local list of available Frida versions
 
 `friman` provides a command-line interface for installing, switching, and managing multiple versions of Frida. The following is the main help output:
 
-```sh
+```
 Usage: friman [OPTIONS] COMMAND [ARGS]...
 
 Options:
