@@ -1,5 +1,5 @@
 import typer
-from friman.utils import helpers, definitions
+from friman.utils import helpers
 from friman.utils.logger import frimanlog
 
 app = typer.Typer()

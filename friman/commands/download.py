@@ -19,12 +19,12 @@ def download(
     platform: Annotated[str, typer.Argument(help="The platform to use", metavar="platform")],
     out_dir: str = typer.Option(None,"--output", "-o", help="Select the folder where to download the file.")
 ):
-    """Download a specific release file (only server and gadget)."""
+    """Download a specific release file (only server and gadget) for the current version."""
 
     current_version = helpers.get_current_version_in_use()
 
     if current_version == None:
-        frimanlog.error("Current version is currently unset.")
+        frimanlog.error("No version is currently set.")
         raise typer.Exit(1)
     
     output_dir = os.path.abspath(out_dir if out_dir != None else Path.cwd())
