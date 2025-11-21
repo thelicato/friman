@@ -8,7 +8,7 @@ from friman.utils.logger import frimanlog
 app = typer.Typer()
 
 @app.command()
-def use(version: Annotated[str, typer.Argument(help="The version of Frida to uninstall", metavar="version")]):
+def use(version: Annotated[str, typer.Argument(help="The version of Frida to use", metavar="version")]):
     """Use <version>."""
 
     installed_versions = helpers.get_installed_versions()
