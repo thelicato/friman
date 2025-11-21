@@ -26,20 +26,24 @@ def install(
     list: bool = typer.Option(None,"--list", help="Show all the installable versions and exit.",callback=list_callback,is_eager=True)
 ):
     """Install a <version> of Frida."""
-    # TODO: Print something when the config is not updated in a while
+    
+    # Get last update and Frida tags
+    last_updated_at = helpers.get_config_updated_at()
     frida_tags = helpers.get_frida_tags()
 
-    if len(frida_tags) == 0:
+    if len(frida_tags) == 0 or last_updated_at == None:
         frimanlog.error("The local list of available Frida versions is empty, running update...")
         update.update()
         frida_tags = helpers.get_frida_tags()
+        
+    if helpers.is_older_than(last_updated_at, 7):
+        frimanlog.warning("You did not update the local list of available Frida versions for more than 7 days, please run 'friman update'.")
 
     clean_version = version.replace("v","")
 
     if clean_version.replace("v","") not in frida_tags:
         frimanlog.error(f"Version '{clean_version}' is not in the list of available Frida versions")
-        frimanlog.error("Print the list of available versions with 'friman install --list'")
-        frimanlog.error("Run 'friman update' to update the local list of all the available versions.")
+        frimanlog.error("Print the list of available versions with 'friman install --list'. If that version exists run 'friman update' to update the local list of all the available versions.")
         raise typer.Exit(1)
 
     frimanlog.info(f"Downloading version '{clean_version}'...")

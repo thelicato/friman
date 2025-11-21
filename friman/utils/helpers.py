@@ -196,3 +196,19 @@ def extract_xz(input_path, delete_original=True):
 
     frimanlog.debug(f"Extracted to: {output_path}")
     return output_path
+
+def is_older_than(date_string: str, days: int) -> bool:
+    """
+    Returns True if the given date_string is older than `days` days.
+    
+    date_string: a string formatted as "%Y-%m-%d %H:%M:%S"
+    days: number of days to compare against
+    """
+    # Parse the string into a datetime object
+    dt = datetime.strptime(date_string, "%Y-%m-%d %H:%M:%S")
+    
+    # Calculate the cutoff datetime
+    cutoff = datetime.now() - timedelta(days=days)
+    
+    # Return whether the date is older
+    return dt < cutoff
