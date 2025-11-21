@@ -12,6 +12,13 @@
 
 Do you ever feel that finding the right Frida version for the job is like threading a needle? With different projects, devices, and debugging scenarios all requiring specific builds, keeping track of Frida versions can quickly become a tedious balancing act. `friman` (pronounced "*free man*") is designed to solve exactly this problem.
 
+## Why
+It’s common to switch between Frida versions because different environments don’t always behave the same with the latest release. Depending on what you’re targeting, a specific version may be the only one that works reliably. Common reasons include:
+
+- **Device/OS quirks**: Older or unusual Android/iOS builds may only work with certain Frida versions.
+- **Project compatibility**: Some scripts, tools, or workflows rely on behavior from a specific release (e.g. a lot of APIs changed between `v16` and `v17`).
+- **Stability vs. features**: Newer versions fix some issues but can introduce others, so the “right” version is not always the newest.
+
 ## Overview
 
 [Frida](https://github.com/frida/frida) evolves rapidly, and different projects or devices often require different versions. Switching manually can be error-prone, especially when juggling multiple environments, server binaries, and gadgets.
@@ -68,7 +75,7 @@ Commands:
   current      Display the currently activated version of Frida.
   list         List all the installed versions.
   ensurepath   Ensure friman directories are correctly set.
-  download     Download a specific release file (only server and gadget).
+  download     Download a specific release file (only server and gadget)...
   push-server  Pushes a the Frida server into the selected ANDROID device.
 ```
 
@@ -238,7 +245,8 @@ Options:
 ```
 Usage: friman download [OPTIONS] type platform
 
-  Download a specific release file (only server and gadget).
+  Download a specific release file (only server and gadget) for the current
+  version.
 
 Arguments:
   type      The selected asset type  \[required]

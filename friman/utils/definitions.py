@@ -20,6 +20,10 @@ FRIMAN_CURRENT_FOLDER = path.join(FRIMAN_FOLDER, "current") # Folder that links 
 # Definitions for the files
 FRIMAN_CONFIG_FILE = path.join(FRIMAN_FOLDER, "config.json") # Contains the current config (list of tags, version in use)
 
+# Config file keys
+FRIMAN_CONFIG_TAGS = "tags"
+FRIMAN_CONFIG_UPDATED_AT = "updated_at"
+
 # Env variables
 FRIMAN_DEBUG = "FRIMAN_DEBUG"
 
@@ -37,5 +41,6 @@ PYPI_API = {
     'json': '/json'
 }
 
-# Frida
+# Frida stuff
+FRIDA_PYPI = "frida"
 FRIDA_REPO = "frida/frida"

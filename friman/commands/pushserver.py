@@ -13,7 +13,7 @@ def list_devices():
     current_version = helpers.get_current_version_in_use()
 
     if current_version == None:
-        frimanlog.error(f"Current version is currently unset.")
+        frimanlog.error("No version is currently set.")
         raise typer.Exit(1)
 
     try:
@@ -33,10 +33,13 @@ def list_callback(list):
     devices = list_devices()
     usb_devices = [d for d in devices if d.type == "usb"]
 
-    if (list):
-        frimanlog.info("Available devices:")
-        for device in usb_devices:
-            frimanlog.info(f"ID: {device.id} - Name: {device.name}")
+    if list:
+        if len(usb_devices) > 0:
+            frimanlog.info("Available devices:")
+            for device in usb_devices:
+                frimanlog.info(f"ID: {device.id} - Name: {device.name}")
+        else:
+            frimanlog.error("No devices available")
         raise typer.Exit()
 
 @app.command()
@@ -50,7 +53,7 @@ def push_server(
     current_version = helpers.get_current_version_in_use()
 
     if current_version == None:
-        frimanlog.error(f"Current version is currently unset.")
+        frimanlog.error("No version is currently set.")
         raise typer.Exit(1)
 
     AVAILABLE_PLATFORMS = ["arm", "arm64", "x86", "x86_64"]

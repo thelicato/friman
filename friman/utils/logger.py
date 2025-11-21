@@ -17,33 +17,33 @@ class Logger:
     # compute padding to align levels
     _max_len = max(len(level) for level in LEVELS)
 
-    def _log(self, level: str, message: str):
+    def _log(self, level: str, message: str, bold: bool = False):
         color = self.COLORS[level]
         reset = self.COLORS["RESET"]
-        bold = self.COLORS["BOLD"]
+        bold = self.COLORS["BOLD"] if bold else ''
         # Align type with spaces inside brackets
         #padded_level = f"{level:<{self._max_len}}"
         #log_line = f"[{color}{padded_level}{reset}] {bold}{message}{reset}"
         log_line = f"{color}{bold}{message}{reset}"
         print(log_line, file=sys.stdout)
 
-    def debug(self, message: str):
+    def debug(self, message: str, bold: bool = False):
         debug_env_value = os.environ.get(definitions.FRIMAN_DEBUG, str(int(False)))
         is_debug = True if debug_env_value == "1" else False
         if is_debug:
-            self._log("DEBUG", message)
+            self._log("DEBUG", message, bold)
 
-    def info(self, message: str):
-        self._log("INFO", message)
+    def info(self, message: str, bold: bool = False):
+        self._log("INFO", message, bold)
 
-    def success(self, message: str):
-        self._log("SUCCESS", message)
+    def success(self, message: str, bold: bool = False):
+        self._log("SUCCESS", message, bold)
 
-    def warning(self, message: str):
-        self._log("WARNING", message)
+    def warning(self, message: str, bold: bool = True):
+        self._log("WARNING", message, bold)
 
-    def error(self, message: str):
-        self._log("ERROR", message)
+    def error(self, message: str, bold: bool = True):
+        self._log("ERROR", message, bold)
 
 
 # Create a single shared instance

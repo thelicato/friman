@@ -7,7 +7,7 @@ import json
 import lzma
 import http.client
 from urllib.parse import urlparse, urljoin
-from datetime import datetime
+from datetime import datetime, timedelta
 from friman.utils import definitions, exceptions
 from friman.utils.logger import frimanlog
 
@@ -148,8 +148,8 @@ def get_github_release_assets(repo: str, tag: str):
 def get_current_config():
     if not file_exists(definitions.FRIMAN_CONFIG_FILE):
         default_config = {
-            "tags": [],
-            "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            definitions.FRIMAN_CONFIG_TAGS: [],
+            definitions.FRIMAN_CONFIG_UPDATED_AT: None
         }
         with open(definitions.FRIMAN_CONFIG_FILE, "w") as f:
             json.dump(default_config, f, ensure_ascii=False, indent=2)
@@ -160,7 +160,11 @@ def get_current_config():
     
 def get_frida_tags():
     config = get_current_config()
-    return config["tags"]
+    return config[definitions.FRIMAN_CONFIG_TAGS]
+
+def get_config_updated_at():
+    config = get_current_config()
+    return config[definitions.FRIMAN_CONFIG_UPDATED_AT]
 
 def get_installed_versions():
     installed_versions = [f for f in os.listdir(definitions.FRIMAN_ENV_FOLDER) if os.path.isdir(os.path.join(definitions.FRIMAN_ENV_FOLDER, f))]
@@ -192,3 +196,19 @@ def extract_xz(input_path, delete_original=True):
 
     frimanlog.debug(f"Extracted to: {output_path}")
     return output_path
+
+def is_older_than(date_string: str, days: int) -> bool:
+    """
+    Returns True if the given date_string is older than `days` days.
+    
+    date_string: a string formatted as "%Y-%m-%d %H:%M:%S"
+    days: number of days to compare against
+    """
+    # Parse the string into a datetime object
+    dt = datetime.strptime(date_string, "%Y-%m-%d %H:%M:%S")
+    
+    # Calculate the cutoff datetime
+    cutoff = datetime.now() - timedelta(days=days)
+    
+    # Return whether the date is older
+    return dt < cutoff
