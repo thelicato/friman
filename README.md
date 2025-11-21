@@ -155,7 +155,7 @@ Usage: friman use [OPTIONS] version
   Use <version>.
 
 Arguments:
-  version  The version of Frida to uninstall  \[required]
+  version  The version of Frida to use  \[required]
 
 Options:
   -h, --help  Show this message and exit.

@@ -35,7 +35,7 @@ def ensurepath():
         else:
             rcfile = Path.home() / ".bashrc"
         profile = rcfile
-        line = f'\n# Added by friman\nexport PATH="{bin_path}:$PATH\nexport PYTHONPATH="{definitions.FRIMAN_CURRENT_FOLDER}:$PYTHONPATH"\n'
+        line = f'\n# Added by friman\nexport PATH="{bin_path}:$PATH"\nexport PYTHONPATH="{definitions.FRIMAN_CURRENT_FOLDER}:$PYTHONPATH"\n'
 
     # ----- Append if missing -----
     if profile.exists():
