@@ -1,10 +1,11 @@
 [project]
 name = "friman"
-version = "0.1.2"
+version = "0.2.0"
 description = "Frida version management tool"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
+    "packaging>=24.0",
     "typer>=0.20.0",
 ]
 

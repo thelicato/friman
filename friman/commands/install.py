@@ -1,5 +1,5 @@
-import os
 import sys
+import shutil
 import subprocess
 from typing_extensions import Annotated
 import typer
@@ -35,8 +35,9 @@ def install(
         frimanlog.error("The local list of available Frida versions is empty, running update...")
         update.update()
         frida_tags = helpers.get_frida_tags()
+        last_updated_at = helpers.get_config_updated_at()
         
-    if helpers.is_older_than(last_updated_at, 7):
+    if last_updated_at is not None and helpers.is_older_than(last_updated_at, 7):
         frimanlog.warning("You did not update the local list of available Frida versions for more than 7 days, please run 'friman update'.")
 
     clean_version = version.replace("v","")
@@ -46,26 +47,65 @@ def install(
         frimanlog.error("Print the list of available versions with 'friman install --list'. If that version exists run 'friman update' to update the local list of all the available versions.")
         raise typer.Exit(1)
 
+    try:
+        frida_tools_version = helpers.get_matching_frida_tools_version(clean_version)
+    except Exception as ex:
+        frimanlog.error(f"Unable to determine a compatible '{definitions.FRIDA_TOOLS_PYPI}' version for Frida '{clean_version}'.")
+        frimanlog.debug(ex)
+        raise typer.Exit(1)
+
+    if frida_tools_version is None:
+        matrix_updated_at = helpers.get_compatibility_matrix_updated_at()
+        if matrix_updated_at is None:
+            frimanlog.error(f"No compatible '{definitions.FRIDA_TOOLS_PYPI}' version was found for Frida '{clean_version}', and the local compatibility matrix is missing. Run 'friman update' and try again.")
+        else:
+            frimanlog.error(f"No compatible '{definitions.FRIDA_TOOLS_PYPI}' version was found for Frida '{clean_version}'. The local compatibility matrix was last updated at {matrix_updated_at}. Run 'friman update' and try again.")
+        raise typer.Exit(1)
+
     frimanlog.info(f"Downloading version '{clean_version}'...")
+    frimanlog.info(f"Using '{definitions.FRIDA_TOOLS_PYPI}=={frida_tools_version}' for compatibility.")
     installed_versions = helpers.get_installed_versions()
-    if clean_version in installed_versions and not force:
-        frimanlog.info(f"Version '{clean_version}' is already installed. Use the '-f' option to force a reinstall.")
-        raise typer.Exit()
+    env_path = helpers.get_version_env_path(clean_version)
+    if clean_version in installed_versions:
+        if helpers.is_version_venv(clean_version):
+            if not force:
+                frimanlog.info(f"Version '{clean_version}' is already installed. Use the '-f' option to force a reinstall.")
+                raise typer.Exit()
+        else:
+            if not force:
+                frimanlog.error(f"Version '{clean_version}' was installed with a legacy layout. Reinstall it with '-f' to migrate it to a managed virtual environment.")
+                raise typer.Exit(1)
+
+        shutil.rmtree(env_path)
+
+    venv_args = [
+        sys.executable,
+        "-m",
+        "venv",
+        env_path
+    ]
+    venv_result = subprocess.run(venv_args, capture_output=True, text=True)
+
+    if venv_result.returncode != 0:
+        shutil.rmtree(env_path, ignore_errors=True)
+        frimanlog.error(f"Error while creating the environment for version '{clean_version}'. Run in the debug mode to get the full logs")
+        frimanlog.debug(f"\n[STDOUT]\n {venv_result.stdout}")
+        frimanlog.debug(f"\n[STDERR]\n {venv_result.stderr}")
+        raise typer.Exit(1)
 
     install_args = [
-        sys.executable, 
+        helpers.get_env_python_path(env_path),
         "-m", 
         "pip", 
         "install", 
         f"frida=={clean_version}", 
-        "frida-tools", 
-        "--upgrade",
-        "--target", 
-        os.path.join(definitions.FRIMAN_ENV_FOLDER, clean_version)
+        f"{definitions.FRIDA_TOOLS_PYPI}=={frida_tools_version}", 
+        "--upgrade"
     ]
     install_result = subprocess.run(install_args, capture_output=True, text=True)
 
     if install_result.returncode != 0:
+        shutil.rmtree(env_path, ignore_errors=True)
         frimanlog.error(f"Error while installing version '{clean_version}'. Run in the debug mode to get the full logs")
         frimanlog.debug(f"\n[STDOUT]\n {install_result.stdout}")
         frimanlog.debug(f"\n[STDERR]\n {install_result.stderr}")

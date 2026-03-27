@@ -19,6 +19,7 @@ FRIMAN_CURRENT_FOLDER = path.join(FRIMAN_FOLDER, "current") # Folder that links 
 
 # Definitions for the files
 FRIMAN_CONFIG_FILE = path.join(FRIMAN_FOLDER, "config.json") # Contains the current config (list of tags, version in use)
+FRIMAN_COMPATIBILITY_MATRIX_FILE = path.join(FRIMAN_FOLDER, "frida-compatibility-matrix.json")
 
 # Config file keys
 FRIMAN_CONFIG_TAGS = "tags"
@@ -32,7 +33,8 @@ GITHUB_API = {
     'base': "api.github.com",
     'repos': "/repos",
     'releases': "/releases",
-    'tags': "/tags"
+    'tags': "/tags",
+    'latest': "/latest"
 }
 
 PYPI_API = {
@@ -43,4 +45,6 @@ PYPI_API = {
 
 # Frida stuff
 FRIDA_PYPI = "frida"
+FRIDA_TOOLS_PYPI = "frida-tools"
 FRIDA_REPO = "frida/frida"
+FRIDA_COMPATIBILITY_MATRIX_REPO = "thelicato/frida-compatibility-matrix"

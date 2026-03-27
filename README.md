@@ -50,8 +50,8 @@ pip install git+https://github.com/thelicato/friman
 After installing run the following:
 
 ```sh
-friman ensurepath # Setup PATH and PYTHONPATH
-friman update # Update the local list of available Frida versions
+friman ensurepath # Setup PATH for the currently selected Frida environment
+friman update # Update the local list of available Frida versions and compatibility matrix
 ```
 
 ## Usage

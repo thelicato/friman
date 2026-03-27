@@ -8,6 +8,7 @@ import lzma
 import http.client
 from urllib.parse import urlparse, urljoin
 from datetime import datetime, timedelta
+from packaging.version import Version, InvalidVersion
 from friman.utils import definitions, exceptions
 from friman.utils.logger import frimanlog
 
@@ -130,6 +131,72 @@ def get_pypi_versions(package: str):
     tags = list(results["releases"].keys())
     return tags
 
+def get_latest_github_release(repo: str):
+    url = f"{definitions.GITHUB_API['repos']}/{repo}{definitions.GITHUB_API['releases']}{definitions.GITHUB_API['latest']}"
+    headers = get_github_headers()
+
+    data = make_request(definitions.GITHUB_API['base'], url, headers)
+    return json.loads(data)
+
+def download_compatibility_matrix():
+    release_info = get_latest_github_release(definitions.FRIDA_COMPATIBILITY_MATRIX_REPO)
+    assets = release_info.get("assets", [])
+    json_assets = [asset for asset in assets if asset.get("name", "").endswith(".json")]
+
+    if len(json_assets) == 0:
+        raise Exception("No JSON asset found in the latest compatibility matrix release")
+
+    matrix_url = json_assets[0]["browser_download_url"]
+    parsed = urlparse(matrix_url)
+    data = make_request(parsed.netloc, parsed.path, get_base_headers(), follow_redirects=True)
+
+    with open(definitions.FRIMAN_COMPATIBILITY_MATRIX_FILE, "wb") as f:
+        f.write(data)
+
+def ensure_compatibility_matrix():
+    if not file_exists(definitions.FRIMAN_COMPATIBILITY_MATRIX_FILE):
+        frimanlog.info("Compatibility matrix missing, downloading it...")
+        download_compatibility_matrix()
+
+def get_compatibility_matrix():
+    ensure_compatibility_matrix()
+
+    with open(definitions.FRIMAN_COMPATIBILITY_MATRIX_FILE) as f:
+        return json.load(f)
+
+def get_compatibility_matrix_updated_at():
+    if not file_exists(definitions.FRIMAN_COMPATIBILITY_MATRIX_FILE):
+        return None
+
+    updated_at = datetime.fromtimestamp(os.path.getmtime(definitions.FRIMAN_COMPATIBILITY_MATRIX_FILE))
+    return updated_at.strftime("%Y-%m-%d %H:%M:%S")
+
+def get_matching_frida_tools_version(frida_version: str):
+    target_version = Version(frida_version)
+    available_versions = []
+    compatibility_matrix = get_compatibility_matrix()
+
+    for version in compatibility_matrix.keys():
+        try:
+            available_versions.append(Version(version))
+        except InvalidVersion:
+            continue
+
+    for tools_version in sorted(available_versions, reverse=True):
+        matrix_entry = compatibility_matrix.get(str(tools_version), {})
+        min_version = matrix_entry.get("gte")
+        max_version = matrix_entry.get("lt")
+
+        if min_version is not None and target_version < Version(min_version):
+            continue
+
+        if max_version is not None and target_version >= Version(max_version):
+            continue
+
+        return str(tools_version)
+
+    return None
+
 def get_github_release_assets(repo: str, tag: str):
     """Fetches release assets for a given GitHub tag."""
 
@@ -170,11 +237,43 @@ def get_installed_versions():
     installed_versions = [f for f in os.listdir(definitions.FRIMAN_ENV_FOLDER) if os.path.isdir(os.path.join(definitions.FRIMAN_ENV_FOLDER, f))]
     return installed_versions
 
-def get_current_version_in_use():
-    symlink_path = pathlib.Path(definitions.FRIMAN_CURRENT_FOLDER).resolve()
+def get_version_env_path(version: str) -> str:
+    return os.path.join(definitions.FRIMAN_ENV_FOLDER, version)
+
+def get_env_bin_path(env_path: str) -> str:
+    return os.path.join(env_path, "Scripts" if os.name == "nt" else "bin")
+
+def get_env_python_path(env_path: str) -> str:
+    python_name = "python.exe" if os.name == "nt" else "python"
+    return os.path.join(get_env_bin_path(env_path), python_name)
+
+def get_env_command_path(env_path: str, command_name: str) -> str:
+    suffix = ".exe" if os.name == "nt" else ""
+    return os.path.join(get_env_bin_path(env_path), f"{command_name}{suffix}")
+
+def is_version_venv(version: str) -> bool:
+    env_path = get_version_env_path(version)
+    return os.path.isfile(os.path.join(env_path, "pyvenv.cfg")) and os.path.isfile(get_env_python_path(env_path))
+
+def get_current_env_path():
+    symlink_path = pathlib.Path(definitions.FRIMAN_CURRENT_FOLDER)
 
     if symlink_path.exists():
-        return symlink_path.name
+        return str(symlink_path.resolve())
+    else:
+        return None
+
+def get_current_env_python_path():
+    current_env_path = get_current_env_path()
+    if current_env_path is None:
+        return None
+    return get_env_python_path(current_env_path)
+
+def get_current_version_in_use():
+    current_env_path = get_current_env_path()
+
+    if current_env_path is not None:
+        return pathlib.Path(current_env_path).name
     else:
         return None
     

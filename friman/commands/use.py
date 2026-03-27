@@ -18,7 +18,11 @@ def use(version: Annotated[str, typer.Argument(help="The version of Frida to use
         frimanlog.error(f"Version '{clean_version}' is not currently installed.")
         raise typer.Exit(1)
 
-    source = os.path.join(definitions.FRIMAN_ENV_FOLDER, clean_version)
+    if not helpers.is_version_venv(clean_version):
+        frimanlog.error(f"Version '{clean_version}' was installed with a legacy layout. Reinstall it with 'friman install {clean_version} --force' before using it.")
+        raise typer.Exit(1)
+
+    source = helpers.get_version_env_path(clean_version)
 
     source_path = pathlib.Path(source).resolve()
     symlink_path = pathlib.Path(definitions.FRIMAN_CURRENT_FOLDER)

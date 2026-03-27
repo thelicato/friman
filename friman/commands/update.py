@@ -20,6 +20,10 @@ def update():
         with open(definitions.FRIMAN_CONFIG_FILE, "w") as f:
             json.dump(current_config, f, ensure_ascii=False, indent=2)
         frimanlog.success(f"{definitions.FRIMAN_CONFIG_FILE} updated!")
+
+        frimanlog.info("Updating the Frida compatibility matrix...")
+        helpers.download_compatibility_matrix()
+        frimanlog.success(f"{definitions.FRIMAN_COMPATIBILITY_MATRIX_FILE} updated!")
     except RateLimitException as ex:
         frimanlog.error("A rate limit error was encountered while updating list of Frida tags.")
     except Exception as ex:

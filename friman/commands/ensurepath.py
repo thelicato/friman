@@ -1,52 +1,89 @@
 import os
 import platform
-from pathlib import Path
+import re
+from pathlib import Path, PureWindowsPath
 import typer
 from friman.utils import definitions
 from friman.utils.logger import frimanlog
 
 app = typer.Typer()
 
+FRIMAN_BLOCK_START = "# >>> friman >>>"
+FRIMAN_BLOCK_END = "# <<< friman <<<"
+
+def get_path_entry(system: str) -> str:
+    if system == "windows":
+        return str(PureWindowsPath(definitions.FRIMAN_CURRENT_FOLDER) / "Scripts")
+    return os.path.join(definitions.FRIMAN_CURRENT_FOLDER, "bin")
+
+def build_profile_block(system: str, path_entry: str) -> str:
+    if system == "windows":
+        return (
+            f"{FRIMAN_BLOCK_START}\n"
+            f'$env:PATH += ";{path_entry}"\n'
+            f"{FRIMAN_BLOCK_END}\n"
+        )
+
+    return (
+        f"{FRIMAN_BLOCK_START}\n"
+        f'export PATH="{path_entry}:$PATH"\n'
+        f"{FRIMAN_BLOCK_END}\n"
+    )
+
+def remove_managed_blocks(contents: str) -> str:
+    contents = re.sub(
+        rf"\n?{re.escape(FRIMAN_BLOCK_START)}\n.*?\n{re.escape(FRIMAN_BLOCK_END)}\n?",
+        "\n",
+        contents,
+        flags=re.DOTALL,
+    )
+    contents = re.sub(
+        r'\n?# Added by friman\nexport PATH="[^"\n]+:\$PATH"\nexport PYTHONPATH="[^"\n]+:\$PYTHONPATH"\n?',
+        "\n",
+        contents,
+    )
+    contents = re.sub(
+        r'\n?# Added by friman\n\$env:PATH \+= ";[^"\n]+"\n(?:\$env:PYTHONPATH = "[^"\n]+"\n)?',
+        "\n",
+        contents,
+    )
+    return contents.strip("\n")
+
 @app.command()
 def ensurepath():
     """Ensure friman directories are correctly set."""
 
     system = platform.system().lower()
-    bin_path = os.path.join(definitions.FRIMAN_CURRENT_FOLDER, "bin")
+    path_entry = get_path_entry(system)
 
-    # ----- Check if already in PATH -----
     current_path = os.environ.get("PATH", "")
-    if definitions.FRIMAN_CURRENT_FOLDER in current_path:
-        frimanlog.info(f"Already in PATH: {definitions.FRIMAN_CURRENT_FOLDER}")
+    if path_entry in current_path:
+        frimanlog.info(f"Already in PATH: {path_entry}")
     else:
-        frimanlog.info(f"PATH does not contain {definitions.FRIMAN_CURRENT_FOLDER}")
+        frimanlog.info(f"PATH does not contain {path_entry}")
 
-    # ----- Determine where to write -----
     if system == "windows":
-        # Modify the user's PowerShell profile on Windows
         profile = Path(os.environ["USERPROFILE"]) / "Documents" / "WindowsPowerShell" / "profile.ps1"
-        line = f'$env:PATH += ";{definitions.FRIMAN_CURRENT_FOLDER}"\n'
     else:
-        # Modify the shell startup file (bash or zsh)
-        # Try ~/.bashrc first
         shell = os.environ.get("SHELL", "")
         if "zsh" in shell:
-            rcfile = Path.home() / ".zshrc"
+            profile = Path.home() / ".zshrc"
         else:
-            rcfile = Path.home() / ".bashrc"
-        profile = rcfile
-        line = f'\n# Added by friman\nexport PATH="{bin_path}:$PATH"\nexport PYTHONPATH="{definitions.FRIMAN_CURRENT_FOLDER}:$PYTHONPATH"\n'
-
-    # ----- Append if missing -----
-    if profile.exists():
-        contents = profile.read_text()
-        if definitions.FRIMAN_CURRENT_FOLDER in contents:
-            frimanlog.info(f"Already added in {profile}")
-            return
+            profile = Path.home() / ".bashrc"
 
     profile.parent.mkdir(parents=True, exist_ok=True)
-    with open(profile, "a", encoding="utf8") as f:
-        f.write(line)
+    block = build_profile_block(system, path_entry)
 
-    frimanlog.success(f"Added PATH entry to {profile}")
+    contents = profile.read_text(encoding="utf8") if profile.exists() else ""
+    if FRIMAN_BLOCK_START in contents and FRIMAN_BLOCK_END in contents and path_entry in contents:
+        frimanlog.info(f"Already added in {profile}")
+        return
+
+    cleaned_contents = remove_managed_blocks(contents)
+    new_contents = f"{cleaned_contents}\n{block}" if cleaned_contents else block
+
+    with open(profile, "w", encoding="utf8") as f:
+        f.write(new_contents)
+
+    frimanlog.success(f"Updated PATH entry in {profile}")
     frimanlog.info("Restart your terminal for changes to take effect.")
