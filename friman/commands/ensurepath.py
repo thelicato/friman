@@ -1,6 +1,6 @@
 import os
 import platform
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 import typer
 from friman.utils import definitions
 from friman.utils.logger import frimanlog
@@ -12,20 +12,24 @@ def ensurepath():
     """Ensure friman directories are correctly set."""
 
     system = platform.system().lower()
-    bin_path = os.path.join(definitions.FRIMAN_CURRENT_FOLDER, "bin")
 
     # ----- Check if already in PATH -----
+    path_entry = str(PureWindowsPath(definitions.FRIMAN_CURRENT_FOLDER) / "Scripts") if system == "windows" else os.path.join(definitions.FRIMAN_CURRENT_FOLDER, "bin")
     current_path = os.environ.get("PATH", "")
-    if definitions.FRIMAN_CURRENT_FOLDER in current_path:
-        frimanlog.info(f"Already in PATH: {definitions.FRIMAN_CURRENT_FOLDER}")
+    if path_entry in current_path:
+        frimanlog.info(f"Already in PATH: {path_entry}")
     else:
-        frimanlog.info(f"PATH does not contain {definitions.FRIMAN_CURRENT_FOLDER}")
+        frimanlog.info(f"PATH does not contain {path_entry}")
 
     # ----- Determine where to write -----
     if system == "windows":
         # Modify the user's PowerShell profile on Windows
         profile = Path(os.environ["USERPROFILE"]) / "Documents" / "WindowsPowerShell" / "profile.ps1"
-        line = f'$env:PATH += ";{definitions.FRIMAN_CURRENT_FOLDER}"\n'
+        line = (
+            f'\n# Added by friman\n'
+            f'$env:PATH += ";{path_entry}"\n'
+            f'$env:PYTHONPATH = "{definitions.FRIMAN_CURRENT_FOLDER};$env:PYTHONPATH"\n'
+        )
     else:
         # Modify the shell startup file (bash or zsh)
         # Try ~/.bashrc first
@@ -35,12 +39,12 @@ def ensurepath():
         else:
             rcfile = Path.home() / ".bashrc"
         profile = rcfile
-        line = f'\n# Added by friman\nexport PATH="{bin_path}:$PATH"\nexport PYTHONPATH="{definitions.FRIMAN_CURRENT_FOLDER}:$PYTHONPATH"\n'
+        line = f'\n# Added by friman\nexport PATH="{path_entry}:$PATH"\nexport PYTHONPATH="{definitions.FRIMAN_CURRENT_FOLDER}:$PYTHONPATH"\n'
 
     # ----- Append if missing -----
     if profile.exists():
         contents = profile.read_text()
-        if definitions.FRIMAN_CURRENT_FOLDER in contents:
+        if path_entry in contents or definitions.FRIMAN_CURRENT_FOLDER in contents:
             frimanlog.info(f"Already added in {profile}")
             return
 
