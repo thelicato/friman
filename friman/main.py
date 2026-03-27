@@ -1,7 +1,9 @@
+import os
 import typer
 from friman import __title__, __version__, __description__
 from friman.commands import update, install, uninstall, use, disable, current, list, ensurepath, download, pushserver
 from friman.utils import helpers, definitions
+from friman.utils.logger import frimanlog
 
 app = typer.Typer(add_completion=False, context_settings={"help_option_names": ["-h", "--help"]}, rich_markup_mode=None)
 
@@ -20,8 +22,6 @@ def version_callback(value: bool):
     if value:
         print(__version__)
         raise typer.Exit()
-    else:
-        helpers.ensure_folders()
 
 def debug_callback(value: bool):
     helpers.set_env_if_empty(definitions.FRIMAN_DEBUG, str(int(value)))  # "1" if True, "0" otherwise
@@ -46,6 +46,16 @@ def cli(
         is_eager=True,   # ensures -d is processed before other logic
     ),
 ):
+    helpers.ensure_folders()
+    if ctx.invoked_subcommand != "update":
+        try:
+            helpers.ensure_compatibility_matrix()
+        except Exception as ex:
+            if os.environ.get(definitions.FRIMAN_DEBUG, "0") == "1":
+                frimanlog.warning(f"Unable to download compatibility matrix: {ex}")
+            else:
+                frimanlog.warning("Unable to download compatibility matrix. Run 'friman update' to retry.")
+
     # If no subcommand was given then show help
     if ctx.invoked_subcommand is None:
         typer.echo(ctx.get_help())

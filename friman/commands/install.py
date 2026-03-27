@@ -4,7 +4,7 @@ import subprocess
 from typing_extensions import Annotated
 import typer
 from friman.commands import update
-from friman.utils import helpers
+from friman.utils import definitions, helpers
 from friman.utils.logger import frimanlog
 
 app = typer.Typer()
@@ -47,7 +47,23 @@ def install(
         frimanlog.error("Print the list of available versions with 'friman install --list'. If that version exists run 'friman update' to update the local list of all the available versions.")
         raise typer.Exit(1)
 
+    try:
+        frida_tools_version = helpers.get_matching_frida_tools_version(clean_version)
+    except Exception as ex:
+        frimanlog.error(f"Unable to determine a compatible '{definitions.FRIDA_TOOLS_PYPI}' version for Frida '{clean_version}'.")
+        frimanlog.debug(ex)
+        raise typer.Exit(1)
+
+    if frida_tools_version is None:
+        matrix_updated_at = helpers.get_compatibility_matrix_updated_at()
+        if matrix_updated_at is None:
+            frimanlog.error(f"No compatible '{definitions.FRIDA_TOOLS_PYPI}' version was found for Frida '{clean_version}', and the local compatibility matrix is missing. Run 'friman update' and try again.")
+        else:
+            frimanlog.error(f"No compatible '{definitions.FRIDA_TOOLS_PYPI}' version was found for Frida '{clean_version}'. The local compatibility matrix was last updated at {matrix_updated_at}. Run 'friman update' and try again.")
+        raise typer.Exit(1)
+
     frimanlog.info(f"Downloading version '{clean_version}'...")
+    frimanlog.info(f"Using '{definitions.FRIDA_TOOLS_PYPI}=={frida_tools_version}' for compatibility.")
     installed_versions = helpers.get_installed_versions()
     env_path = helpers.get_version_env_path(clean_version)
     if clean_version in installed_versions:
@@ -83,7 +99,7 @@ def install(
         "pip", 
         "install", 
         f"frida=={clean_version}", 
-        "frida-tools", 
+        f"{definitions.FRIDA_TOOLS_PYPI}=={frida_tools_version}", 
         "--upgrade"
     ]
     install_result = subprocess.run(install_args, capture_output=True, text=True)

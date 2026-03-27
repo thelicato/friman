@@ -51,7 +51,7 @@ After installing run the following:
 
 ```sh
 friman ensurepath # Setup PATH for the currently selected Frida environment
-friman update # Update the local list of available Frida versions
+friman update # Update the local list of available Frida versions and compatibility matrix
 ```
 
 ## Usage
