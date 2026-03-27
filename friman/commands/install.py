@@ -35,8 +35,9 @@ def install(
         frimanlog.error("The local list of available Frida versions is empty, running update...")
         update.update()
         frida_tags = helpers.get_frida_tags()
+        last_updated_at = helpers.get_config_updated_at()
         
-    if helpers.is_older_than(last_updated_at, 7):
+    if last_updated_at is not None and helpers.is_older_than(last_updated_at, 7):
         frimanlog.warning("You did not update the local list of available Frida versions for more than 7 days, please run 'friman update'.")
 
     clean_version = version.replace("v","")
