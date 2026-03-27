@@ -17,7 +17,8 @@ def list():
     frimanlog.info("Installed versions:")
     sorted_tags = sorted(installed_versions, key=lambda s: tuple(map(int, s.split("."))))
     for version in sorted_tags:
+        legacy_suffix = "" if helpers.is_version_venv(version) else " [legacy]"
         if (current_version == version):
-            frimanlog.success(f"  {version} [*]")
+            frimanlog.success(f"  {version} [*]{legacy_suffix}")
         else:
-            frimanlog.info(f"  {version}")
+            frimanlog.info(f"  {version}{legacy_suffix}")

@@ -1,6 +1,7 @@
 import shutil
 import tempfile
 import subprocess
+import re
 from typing_extensions import Annotated
 import typer
 from friman.commands import download
@@ -8,6 +9,51 @@ from friman.utils import helpers
 from friman.utils.logger import frimanlog
 
 app = typer.Typer()
+
+USB_DEVICE_TYPES = {"usb", "tether"}
+
+def get_current_frida_command(command_name: str) -> str:
+    current_env_path = helpers.get_current_env_path()
+    if current_env_path is None:
+        raise FileNotFoundError("No current environment selected")
+
+    command_path = helpers.get_env_command_path(current_env_path, command_name)
+    if not helpers.file_exists(command_path):
+        raise FileNotFoundError(f"Missing command '{command_name}' in current environment")
+
+    return command_path
+
+def get_current_cli_version() -> str:
+    frida_command = get_current_frida_command("frida")
+    result = subprocess.run([frida_command, "--version"], capture_output=True, text=True)
+    if result.returncode != 0:
+        raise RuntimeError(result.stderr.strip() or result.stdout.strip() or "Failed to query Frida version")
+
+    return result.stdout.strip()
+
+def get_current_cli_devices():
+    list_devices_command = get_current_frida_command("frida-ls-devices")
+    result = subprocess.run([list_devices_command], capture_output=True, text=True)
+    if result.returncode != 0:
+        raise RuntimeError(result.stderr.strip() or result.stdout.strip() or "Failed to enumerate Frida devices")
+
+    devices = []
+    for line in result.stdout.splitlines():
+        stripped = line.strip()
+        if len(stripped) == 0 or stripped.startswith("Id ") or stripped.startswith("---"):
+            continue
+
+        parts = re.split(r"\s{2,}", stripped)
+        if len(parts) < 3:
+            continue
+
+        devices.append({
+            "id": parts[0],
+            "type": parts[1],
+            "name": parts[2],
+        })
+
+    return devices
 
 def list_devices():
     current_version = helpers.get_current_version_in_use()
@@ -17,27 +63,35 @@ def list_devices():
         raise typer.Exit(1)
 
     try:
-        # The currently used version should be loaded
-        import frida # type: ignore
-        if frida.__version__ != current_version:
-            frimanlog.error(f"Mismatch between expected version and loaded one ('{current_version}' != '{frida.__version__}')")
+        actual_version = get_current_cli_version()
+        if actual_version != current_version:
+            frimanlog.error(f"Mismatch between expected version and loaded one ('{current_version}' != '{actual_version}')")
             raise typer.Exit(1)
 
-        devices = frida.enumerate_devices()
-        return devices
+        return get_current_cli_devices()
+    except typer.Exit:
+        raise
+    except FileNotFoundError:
+        frimanlog.error(f"Version '{current_version}' is not a managed virtual environment. Reinstall it with 'friman install {current_version} --force'.")
+        raise typer.Exit(1)
+    except RuntimeError as ex:
+        frimanlog.error("An error occurred while listing available devices. Reload with the '-d' option to get debug logs")
+        frimanlog.debug(ex)
+        raise typer.Exit(1)
     except Exception as ex:
         frimanlog.error("An error occurred while listing available devices. Reload with the '-d' option to get debug logs")
         frimanlog.debug(ex)
+        raise typer.Exit(1)
 
 def list_callback(list):
     devices = list_devices()
-    usb_devices = [d for d in devices if d.type == "usb"]
+    usb_devices = [d for d in devices if d["type"] in USB_DEVICE_TYPES]
 
     if list:
         if len(usb_devices) > 0:
             frimanlog.info("Available devices:")
             for device in usb_devices:
-                frimanlog.info(f"ID: {device.id} - Name: {device.name}")
+                frimanlog.info(f"ID: {device['id']} - Name: {device['name']}")
         else:
             frimanlog.error("No devices available")
         raise typer.Exit()
@@ -65,13 +119,13 @@ def push_server(
         raise typer.Exit(1)
 
     devices = list_devices()
-    usb_devices = [d for d in devices if d.type == "usb"]
-    device_ids = [d.id for d in usb_devices]
+    usb_devices = [d for d in devices if d["type"] in USB_DEVICE_TYPES]
+    device_ids = [d["id"] for d in usb_devices]
 
     if device_id not in device_ids:
         frimanlog.error(f"Invalid device ID '{platform}'. Available devices are:")
         for device in usb_devices:
-            frimanlog.info(f"ID: {device.id} - Name: {device.name}")
+            frimanlog.info(f"ID: {device['id']} - Name: {device['name']}")
         raise typer.Exit(1)
 
     # TODO: check for abd, download frida-server for the specified platform and run adb push

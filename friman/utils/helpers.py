@@ -170,11 +170,43 @@ def get_installed_versions():
     installed_versions = [f for f in os.listdir(definitions.FRIMAN_ENV_FOLDER) if os.path.isdir(os.path.join(definitions.FRIMAN_ENV_FOLDER, f))]
     return installed_versions
 
-def get_current_version_in_use():
-    symlink_path = pathlib.Path(definitions.FRIMAN_CURRENT_FOLDER).resolve()
+def get_version_env_path(version: str) -> str:
+    return os.path.join(definitions.FRIMAN_ENV_FOLDER, version)
+
+def get_env_bin_path(env_path: str) -> str:
+    return os.path.join(env_path, "Scripts" if os.name == "nt" else "bin")
+
+def get_env_python_path(env_path: str) -> str:
+    python_name = "python.exe" if os.name == "nt" else "python"
+    return os.path.join(get_env_bin_path(env_path), python_name)
+
+def get_env_command_path(env_path: str, command_name: str) -> str:
+    suffix = ".exe" if os.name == "nt" else ""
+    return os.path.join(get_env_bin_path(env_path), f"{command_name}{suffix}")
+
+def is_version_venv(version: str) -> bool:
+    env_path = get_version_env_path(version)
+    return os.path.isfile(os.path.join(env_path, "pyvenv.cfg")) and os.path.isfile(get_env_python_path(env_path))
+
+def get_current_env_path():
+    symlink_path = pathlib.Path(definitions.FRIMAN_CURRENT_FOLDER)
 
     if symlink_path.exists():
-        return symlink_path.name
+        return str(symlink_path.resolve())
+    else:
+        return None
+
+def get_current_env_python_path():
+    current_env_path = get_current_env_path()
+    if current_env_path is None:
+        return None
+    return get_env_python_path(current_env_path)
+
+def get_current_version_in_use():
+    current_env_path = get_current_env_path()
+
+    if current_env_path is not None:
+        return pathlib.Path(current_env_path).name
     else:
         return None
     
