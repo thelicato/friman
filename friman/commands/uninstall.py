@@ -1,4 +1,5 @@
 import os
+import pathlib
 import shutil
 from typing_extensions import Annotated
 import typer
@@ -17,6 +18,14 @@ def uninstall(version: Annotated[str, typer.Argument(help="The version of Frida 
     if clean_version not in installed_versions:
         frimanlog.error(f"Version '{clean_version}' is not currently installed.")
         raise typer.Exit(1)
+
+    current_version = helpers.get_current_version_in_use()
+    symlink_path = pathlib.Path(definitions.FRIMAN_CURRENT_FOLDER)
+
+    if current_version == clean_version:
+        if symlink_path.is_symlink() or symlink_path.is_file():
+            symlink_path.unlink()
+        frimanlog.info(f"Version '{clean_version}' was active and has been deactivated.")
     
     shutil.rmtree(os.path.join(definitions.FRIMAN_ENV_FOLDER, clean_version))
 
