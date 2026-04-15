@@ -17,7 +17,6 @@ FRIMAN_FOLDER = path.join(Path.home(), DEFAULT_BASE_PATH)
 FRIMAN_ENV_FOLDER = path.join(FRIMAN_FOLDER, "env") # Folder that contains all the installed frida versions
 FRIMAN_CURRENT_FOLDER = path.join(FRIMAN_FOLDER, "current") # Folder that links to the currently used frida version
 FRIMAN_BIN_FOLDER = path.join(FRIMAN_FOLDER, "bin") # Folder for friman shim commands
-FRIMAN_BIN_FOLDER = path.join(FRIMAN_FOLDER, "bin") # Folder for friman shim commands
 
 # Definitions for the files
 FRIMAN_CONFIG_FILE = path.join(FRIMAN_FOLDER, "config.json") # Contains the current config (list of tags, version in use)
