@@ -254,17 +254,6 @@ def get_env_command_path(env_path: str, command_name: str) -> str:
     suffix = ".exe" if os.name == "nt" else ""
     return os.path.join(get_env_bin_path(env_path), f"{command_name}{suffix}")
 
-BIN_SHIM_EXCLUDE = {
-    "python",
-    "python3",
-    "python.exe",
-    "python3.exe",
-    "pip",
-    "pip3",
-    "pip.exe",
-    "pip3.exe",
-}
-
 def get_friman_bin_path() -> str:
     return definitions.FRIMAN_BIN_FOLDER
 
@@ -276,8 +265,9 @@ def create_current_bin_shims():
     if not os.path.isdir(current_bin):
         return
 
+    allowlisted_prefix = "frida"
     for entry in os.listdir(current_bin):
-        if entry in BIN_SHIM_EXCLUDE:
+        if not entry.lower().startswith(allowlisted_prefix):
             continue
 
         source = os.path.join(definitions.FRIMAN_CURRENT_FOLDER, "bin", entry)
