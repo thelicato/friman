@@ -30,12 +30,14 @@ source = { editable = "." }
 dependencies = [
     { name = "packaging" },
     { name = "typer" },
+    { name = "typing-extensions" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "packaging", specifier = ">=24.0" },
     { name = "typer", specifier = ">=0.20.0" },
+    { name = "typing-extensions", specifier = ">=4.15.0" },
 ]
 
 [[package]]
