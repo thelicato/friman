@@ -1,9 +1,9 @@
 import os
 import platform
 import re
-from pathlib import Path, PureWindowsPath
+from pathlib import Path
 import typer
-from friman.utils import definitions
+from friman.utils import definitions, helpers
 from friman.utils.logger import frimanlog
 
 app = typer.Typer()
@@ -12,9 +12,7 @@ FRIMAN_BLOCK_START = "# >>> friman >>>"
 FRIMAN_BLOCK_END = "# <<< friman <<<"
 
 def get_path_entry(system: str) -> str:
-    if system == "windows":
-        return str(PureWindowsPath(definitions.FRIMAN_CURRENT_FOLDER) / "Scripts")
-    return os.path.join(definitions.FRIMAN_CURRENT_FOLDER, "bin")
+    return definitions.FRIMAN_BIN_FOLDER
 
 def build_profile_block(system: str, path_entry: str) -> str:
     if system == "windows":
@@ -77,6 +75,7 @@ def ensurepath():
     contents = profile.read_text(encoding="utf8") if profile.exists() else ""
     if FRIMAN_BLOCK_START in contents and FRIMAN_BLOCK_END in contents and path_entry in contents:
         frimanlog.info(f"Already added in {profile}")
+        helpers.create_current_bin_shims()
         return
 
     cleaned_contents = remove_managed_blocks(contents)
@@ -85,5 +84,6 @@ def ensurepath():
     with open(profile, "w", encoding="utf8") as f:
         f.write(new_contents)
 
+    helpers.create_current_bin_shims()
     frimanlog.success(f"Updated PATH entry in {profile}")
     frimanlog.info("Restart your terminal for changes to take effect.")

@@ -40,4 +40,5 @@ def use(version: Annotated[str, typer.Argument(help="The version of Frida to use
             raise typer.Exit(1)
 
     os.symlink(source_path, symlink_path, target_is_directory=True)
+    helpers.create_current_bin_shims()
     frimanlog.success(f"Version in use correctly set to '{clean_version}'. Run 'frida --version' to check.")

@@ -32,6 +32,9 @@ def ensure_folders():
     # Create the env folder within the above one if missing
     create_folder_if_missing(definitions.FRIMAN_ENV_FOLDER)
 
+    # Create a managed shim folder for exposing only Frida executables
+    create_folder_if_missing(definitions.FRIMAN_BIN_FOLDER)
+
 def set_env_if_empty(env_var, env_value):
     """Set an ENV variable if empty, otherwise don't change it (ENV vars take precedence!)"""
     os.environ[env_var] = os.environ.get(env_var, env_value)
@@ -250,6 +253,52 @@ def get_env_python_path(env_path: str) -> str:
 def get_env_command_path(env_path: str, command_name: str) -> str:
     suffix = ".exe" if os.name == "nt" else ""
     return os.path.join(get_env_bin_path(env_path), f"{command_name}{suffix}")
+
+BIN_SHIM_EXCLUDE = {
+    "python",
+    "python3",
+    "python.exe",
+    "python3.exe",
+    "pip",
+    "pip3",
+    "pip.exe",
+    "pip3.exe",
+}
+
+def get_friman_bin_path() -> str:
+    return definitions.FRIMAN_BIN_FOLDER
+
+def create_current_bin_shims():
+    """Create shims in the managed friman bin folder for the currently selected env."""
+    create_folder_if_missing(definitions.FRIMAN_BIN_FOLDER)
+
+    current_bin = os.path.join(definitions.FRIMAN_CURRENT_FOLDER, "bin")
+    if not os.path.isdir(current_bin):
+        return
+
+    for entry in os.listdir(current_bin):
+        if entry in BIN_SHIM_EXCLUDE:
+            continue
+
+        source = os.path.join(definitions.FRIMAN_CURRENT_FOLDER, "bin", entry)
+        target = os.path.join(definitions.FRIMAN_BIN_FOLDER, entry)
+
+        if os.path.exists(target) or os.path.islink(target):
+            os.remove(target)
+
+        try:
+            os.symlink(source, target, target_is_directory=False)
+        except OSError:
+            # On platforms where symlink is restricted, continue without failing.
+            continue
+
+    # Remove stale shim links no longer provided by the current env.
+    for entry in os.listdir(definitions.FRIMAN_BIN_FOLDER):
+        target = os.path.join(definitions.FRIMAN_BIN_FOLDER, entry)
+        if os.path.islink(target):
+            source = os.readlink(target)
+            if not os.path.exists(source):
+                os.remove(target)
 
 def is_version_venv(version: str) -> bool:
     env_path = get_version_env_path(version)
