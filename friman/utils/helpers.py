@@ -37,7 +37,9 @@ def ensure_folders():
 
 def set_env_if_empty(env_var, env_value):
     """Set an ENV variable if empty, otherwise don't change it (ENV vars take precedence!)"""
-    os.environ[env_var] = os.environ.get(env_var, env_value)
+    val = os.environ.get(env_var, env_value)
+    if(val != None):
+        os.environ[env_var] = val
 
 def get_base_headers():
     """Get basic request headers"""
@@ -257,11 +259,14 @@ def get_env_command_path(env_path: str, command_name: str) -> str:
 def get_friman_bin_path() -> str:
     return definitions.FRIMAN_BIN_FOLDER
 
+def get_bin_name() -> str:
+    return "Scripts" if os.name == "nt" else "bin"
+
 def create_current_bin_shims():
     """Create shims in the managed friman bin folder for the currently selected env."""
     create_folder_if_missing(definitions.FRIMAN_BIN_FOLDER)
 
-    current_bin = os.path.join(definitions.FRIMAN_CURRENT_FOLDER, "bin")
+    current_bin = os.path.join(definitions.FRIMAN_CURRENT_FOLDER, get_bin_name())
     if not os.path.isdir(current_bin):
         return
 
@@ -270,7 +275,7 @@ def create_current_bin_shims():
         if not entry.lower().startswith(allowlisted_prefix):
             continue
 
-        source = os.path.join(definitions.FRIMAN_CURRENT_FOLDER, "bin", entry)
+        source = os.path.join(definitions.FRIMAN_CURRENT_FOLDER, get_bin_name(), entry)
         target = os.path.join(definitions.FRIMAN_BIN_FOLDER, entry)
 
         if os.path.exists(target) or os.path.islink(target):
@@ -278,7 +283,8 @@ def create_current_bin_shims():
 
         try:
             os.symlink(source, target, target_is_directory=False)
-        except OSError:
+        except OSError as exc:
+            print(f"Could not create symlink {target!r} -> {source!r}: {exc}")
             # On platforms where symlink is restricted, continue without failing.
             continue
 
