@@ -1,6 +1,7 @@
 import os
 import platform
 import re
+import ctypes.wintypes
 from pathlib import Path
 import typer
 from friman.utils import definitions, helpers
@@ -14,11 +15,19 @@ FRIMAN_BLOCK_END = "# <<< friman <<<"
 def get_path_entry(system: str) -> str:
     return definitions.FRIMAN_BIN_FOLDER
 
+def get_windows_documents_path() -> Path:
+    CSIDL_PERSONAL = 5
+    buf = ctypes.create_unicode_buffer(ctypes.wintypes.MAX_PATH)
+    ctypes.windll.shell32.SHGetFolderPathW(None, CSIDL_PERSONAL, None, 0, buf)
+
+    documents_path = Path(buf.value)
+    return documents_path
+
 def build_profile_block(system: str, shell: str, path_entry: str) -> str:
     if system == "windows":
         return (
             f"{FRIMAN_BLOCK_START}\n"
-            f'$env:PATH += ";{path_entry}"\n'
+            f'$env:PATH = "{path_entry};$env:PATH";\n'
             f"{FRIMAN_BLOCK_END}\n"
         )
 
@@ -39,7 +48,7 @@ def build_profile_block(system: str, shell: str, path_entry: str) -> str:
 
 def get_shell_profile(system: str, shell: str) -> Path:
     if system == "windows":
-        return Path(os.environ["USERPROFILE"]) / "Documents" / "WindowsPowerShell" / "profile.ps1"
+        return Path(get_windows_documents_path()) / "WindowsPowerShell" / "profile.ps1"
 
     shell_name = Path(shell or "").name.lower()
     if shell_name == "fish":
@@ -99,7 +108,6 @@ def ensurepath():
     contents = profile.read_text(encoding="utf8") if profile.exists() else ""
     if FRIMAN_BLOCK_START in contents and FRIMAN_BLOCK_END in contents and path_entry in contents:
         frimanlog.info(f"Already added in {profile}")
-        helpers.create_current_bin_shims()
         return
 
     cleaned_contents = remove_managed_blocks(contents)
@@ -108,6 +116,5 @@ def ensurepath():
     with open(profile, "w", encoding="utf8") as f:
         f.write(new_contents)
 
-    helpers.create_current_bin_shims()
     frimanlog.success(f"Updated PATH entry in {profile}")
     frimanlog.info("Restart your terminal for changes to take effect.")
