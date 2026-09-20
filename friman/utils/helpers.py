@@ -5,12 +5,42 @@ import os
 import pathlib
 import json
 import lzma
-import http.client
-from urllib.parse import urlparse, urljoin
+import gzip
+import time
+from urllib.error import HTTPError, URLError
+from urllib.parse import urlparse
+from urllib.request import HTTPRedirectHandler, Request, build_opener
 from datetime import datetime, timedelta
 from packaging.version import Version, InvalidVersion
 from friman.utils import definitions, exceptions
 from friman.utils.logger import frimanlog
+
+REQUEST_TIMEOUT = 15  # Seconds per blocking network operation, not an overall deadline.
+
+
+class _RedirectHandler(HTTPRedirectHandler):
+    def __init__(self, follow_redirects, max_redirects):
+        super().__init__()
+        self.follow_redirects = follow_redirects
+        self.max_redirects = max_redirects
+        self.redirects = 0
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        if not self.follow_redirects:
+            return None
+        if self.redirects >= self.max_redirects:
+            if fp is not None:
+                fp.close()
+            raise RuntimeError("Too many redirects")
+        if urlparse(newurl).scheme != "https":
+            if fp is not None:
+                fp.close()
+            raise ValueError("HTTPS downloads must not redirect to another protocol")
+        self.redirects += 1
+        redirected = super().redirect_request(req, fp, code, msg, headers, newurl)
+        if redirected is not None and urlparse(req.full_url).netloc != urlparse(newurl).netloc:
+            redirected.remove_header("Authorization")
+        return redirected
 
 def banner(version):
     print()
@@ -57,52 +87,66 @@ def get_github_headers():
     return headers
 
 
-def make_request(host, url, headers, follow_redirects=False, max_redirects=5):
-    """Performs an HTTPS GET request and returns the response."""
-
-    redirects = 0
-    current_host = host
-    current_url = url
-
+def _read_response(response, host):
+    """Read incrementally, report large/slow transfers, and decode HTTP gzip."""
+    try:
+        total = int(response.headers.get("Content-Length", "0"))
+    except (TypeError, ValueError):
+        total = 0
+    chunk_size = 64 * 1024
+    started = last_progress = time.monotonic()
+    show_progress = total >= chunk_size
+    if show_progress:
+        frimanlog.info(f"Downloading from {host}: 0 / {total:,} bytes...")
+    chunks = []
+    received = 0
     while True:
-        conn = http.client.HTTPSConnection(current_host)
-        conn.request("GET", current_url, headers=headers)
-        response = conn.getresponse()
+        chunk = response.read(chunk_size)
+        if not chunk:
+            break
+        chunks.append(chunk)
+        received += len(chunk)
+        now = time.monotonic()
+        if now - last_progress >= 1:
+            expected = f" / {total:,}" if total > 0 else ""
+            frimanlog.info(f"Downloading from {host}: {received:,}{expected} bytes...")
+            show_progress = True
+            last_progress = now
+    if show_progress:
+        frimanlog.info(f"Downloaded {received:,} bytes from {host} in {time.monotonic() - started:.1f}s.")
+    data = b"".join(chunks)
+    if response.headers.get("Content-Encoding", "").lower() == "gzip":
+        data = gzip.decompress(data)
+    return data
 
-        status = response.status
-        data = response.read()
-        conn.close()
 
-        # Handle redirect
-        if follow_redirects and status in (301, 302, 303, 307, 308):
-            if redirects >= max_redirects:
-                raise Exception("Too many redirects")
-
-            location = response.getheader("Location")
-            if not location:
-                raise Exception("Redirect without Location header")
-
-            # Build new absolute URL
-            if location.startswith("http"):
-                parsed = urlparse(location)
-                current_host = parsed.netloc
-                current_url = parsed.path or "/"
-                if parsed.query:
-                    current_url += "?" + parsed.query
-            else:
-                # relative redirect
-                current_url = urljoin(current_url, location)
-
-            redirects += 1
-            continue  # perform another request
-
-        # Normal error handling
-        if status == 403:
-            raise exceptions.RateLimitException(f"Status code {response.status} - error {data.decode()} - url {url}")
-        elif status != 200:
-            raise Exception(f"{status} - {data.decode()} - url {current_url}")
-
-        return data
+def make_request(host, url, headers, follow_redirects=False, max_redirects=5):
+    """HTTPS GET with a finite socket timeout and standard system/env proxies."""
+    # Unlike a raw HTTPSConnection, urllib's default ProxyHandler honors
+    # HTTPS_PROXY / HTTP_PROXY / NO_PROXY and supported system proxy settings.
+    opener = build_opener(_RedirectHandler(follow_redirects, max_redirects))
+    request = Request(f"https://{host}{url}", headers=headers)
+    if not request.has_header("Accept-encoding"):
+        request.add_header("Accept-Encoding", "gzip")
+    frimanlog.debug(f"Requesting https://{host} (network timeout: {REQUEST_TIMEOUT}s)")
+    try:
+        try:
+            with opener.open(request, timeout=REQUEST_TIMEOUT) as response:
+                return _read_response(response, host)
+        except HTTPError as ex:
+            with ex:
+                body = _read_response(ex, host).decode(errors="replace")
+            if ex.code == 403:
+                raise exceptions.RateLimitException(f"Status code 403 - error {body} - host {host}") from ex
+            raise RuntimeError(f"HTTP {ex.code} from {host}: {body}") from ex
+    except (TimeoutError, URLError) as ex:
+        reason = ex.reason if isinstance(ex, URLError) else ex
+        if isinstance(reason, TimeoutError):
+            raise TimeoutError(
+                f"HTTPS request to {host} timed out (network timeout: {REQUEST_TIMEOUT}s). "
+                "Check your network or HTTPS_PROXY setting, then retry."
+            ) from ex
+        raise RuntimeError(f"HTTPS request to {host} failed: {reason}") from ex
 
 def get_all_github_tags(repo: str):
     """Fetches all tags from the GitHub repository, handling pagination."""
@@ -142,6 +186,7 @@ def get_latest_github_release(repo: str):
     return json.loads(data)
 
 def download_compatibility_matrix():
+    frimanlog.info(f"Fetching compatibility matrix release metadata from GitHub (network timeout: {REQUEST_TIMEOUT}s)...")
     release_info = get_latest_github_release(definitions.FRIDA_COMPATIBILITY_MATRIX_REPO)
     assets = release_info.get("assets", [])
     json_assets = [asset for asset in assets if asset.get("name", "").endswith(".json")]
@@ -151,6 +196,7 @@ def download_compatibility_matrix():
 
     matrix_url = json_assets[0]["browser_download_url"]
     parsed = urlparse(matrix_url)
+    frimanlog.info(f"Downloading compatibility matrix from {parsed.netloc} (network timeout: {REQUEST_TIMEOUT}s)...")
     data = make_request(parsed.netloc, parsed.path, get_base_headers(), follow_redirects=True)
 
     with open(definitions.FRIMAN_COMPATIBILITY_MATRIX_FILE, "wb") as f:
@@ -261,7 +307,7 @@ def create_current_bin_shims():
     """Create shims in the managed friman bin folder for the currently selected env."""
     create_folder_if_missing(definitions.FRIMAN_BIN_FOLDER)
 
-    current_bin = os.path.join(definitions.FRIMAN_CURRENT_FOLDER, "bin")
+    current_bin = get_env_bin_path(definitions.FRIMAN_CURRENT_FOLDER)
     if not os.path.isdir(current_bin):
         return
 
@@ -270,7 +316,7 @@ def create_current_bin_shims():
         if not entry.lower().startswith(allowlisted_prefix):
             continue
 
-        source = os.path.join(definitions.FRIMAN_CURRENT_FOLDER, "bin", entry)
+        source = os.path.join(current_bin, entry)
         target = os.path.join(definitions.FRIMAN_BIN_FOLDER, entry)
 
         if os.path.exists(target) or os.path.islink(target):

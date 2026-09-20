@@ -1,6 +1,8 @@
 import sys
+import os
 import shutil
 import subprocess
+import tempfile
 from typing_extensions import Annotated
 import typer
 from friman.commands import update
@@ -50,7 +52,7 @@ def install(
     try:
         frida_tools_version = helpers.get_matching_frida_tools_version(clean_version)
     except Exception as ex:
-        frimanlog.error(f"Unable to determine a compatible '{definitions.FRIDA_TOOLS_PYPI}' version for Frida '{clean_version}'.")
+        frimanlog.error(f"Unable to determine a compatible '{definitions.FRIDA_TOOLS_PYPI}' version for Frida '{clean_version}': {ex}")
         frimanlog.debug(ex)
         raise typer.Exit(1)
 
@@ -66,6 +68,8 @@ def install(
     frimanlog.info(f"Using '{definitions.FRIDA_TOOLS_PYPI}=={frida_tools_version}' for compatibility.")
     installed_versions = helpers.get_installed_versions()
     env_path = helpers.get_version_env_path(clean_version)
+    backup_dir = None
+    backup_path = None
     if clean_version in installed_versions:
         if helpers.is_version_venv(clean_version):
             if not force:
@@ -76,39 +80,70 @@ def install(
                 frimanlog.error(f"Version '{clean_version}' was installed with a legacy layout. Reinstall it with '-f' to migrate it to a managed virtual environment.")
                 raise typer.Exit(1)
 
-        shutil.rmtree(env_path)
+        # Keep backups outside env/ so they are not listed as installed versions.
+        # Build at the final path: venv launchers can contain absolute paths.
+        backup_dir = tempfile.mkdtemp(prefix=f".friman-{clean_version}-backup-", dir=definitions.FRIMAN_FOLDER)
+        backup_path = os.path.join(backup_dir, "environment")
+        try:
+            os.replace(env_path, backup_path)
+        except BaseException:
+            os.rmdir(backup_dir)
+            raise
 
-    venv_args = [
-        sys.executable,
-        "-m",
-        "venv",
-        env_path
-    ]
-    venv_result = subprocess.run(venv_args, capture_output=True, text=True)
+    try:
+        venv_args = [sys.executable, "-m", "venv", env_path]
+        venv_result = subprocess.run(venv_args, capture_output=True, text=True)
 
-    if venv_result.returncode != 0:
-        shutil.rmtree(env_path, ignore_errors=True)
-        frimanlog.error(f"Error while creating the environment for version '{clean_version}'. Run in the debug mode to get the full logs")
-        frimanlog.debug(f"\n[STDOUT]\n {venv_result.stdout}")
-        frimanlog.debug(f"\n[STDERR]\n {venv_result.stderr}")
-        raise typer.Exit(1)
+        if venv_result.returncode != 0:
+            frimanlog.error(f"Error while creating the environment for version '{clean_version}'. Run in the debug mode to get the full logs")
+            frimanlog.debug(f"\n[STDOUT]\n {venv_result.stdout}")
+            frimanlog.debug(f"\n[STDERR]\n {venv_result.stderr}")
+            raise typer.Exit(1)
 
-    install_args = [
-        helpers.get_env_python_path(env_path),
-        "-m", 
-        "pip", 
-        "install", 
-        f"frida=={clean_version}", 
-        f"{definitions.FRIDA_TOOLS_PYPI}=={frida_tools_version}", 
-        "--upgrade"
-    ]
-    install_result = subprocess.run(install_args, capture_output=True, text=True)
+        install_args = [
+            helpers.get_env_python_path(env_path),
+            "-m", "pip", "install",
+            f"frida=={clean_version}",
+            f"{definitions.FRIDA_TOOLS_PYPI}=={frida_tools_version}",
+            "--upgrade",
+        ]
+        install_result = subprocess.run(install_args, capture_output=True, text=True)
 
-    if install_result.returncode != 0:
-        shutil.rmtree(env_path, ignore_errors=True)
-        frimanlog.error(f"Error while installing version '{clean_version}'. Run in the debug mode to get the full logs")
-        frimanlog.debug(f"\n[STDOUT]\n {install_result.stdout}")
-        frimanlog.debug(f"\n[STDERR]\n {install_result.stderr}")
-        raise typer.Exit(1)
+        if install_result.returncode != 0:
+            frimanlog.error(f"Error while installing version '{clean_version}'. Run in the debug mode to get the full logs")
+            frimanlog.debug(f"\n[STDOUT]\n {install_result.stdout}")
+            frimanlog.debug(f"\n[STDERR]\n {install_result.stderr}")
+            raise typer.Exit(1)
+
+        check_result = subprocess.run(
+            [helpers.get_env_command_path(env_path, "frida"), "--version"],
+            capture_output=True, text=True,
+        )
+        if check_result.returncode != 0 or check_result.stdout.strip() != clean_version:
+            frimanlog.error(f"The installed Frida command failed validation for version '{clean_version}'.")
+            frimanlog.debug(f"\n[STDOUT]\n {check_result.stdout}")
+            frimanlog.debug(f"\n[STDERR]\n {check_result.stderr}")
+            raise typer.Exit(1)
+    except BaseException:
+        # Include Ctrl+C and process-launch errors, not only pip's exit status.
+        try:
+            if os.path.exists(env_path):
+                shutil.rmtree(env_path)
+            if backup_path is not None:
+                os.replace(backup_path, env_path)
+        except OSError:
+            if backup_path is not None:
+                frimanlog.error(f"Automatic recovery failed. The original environment is retained at '{backup_path}'.")
+            raise
+        if backup_dir is not None:
+            os.rmdir(backup_dir)
+            frimanlog.info(f"Restored the previous environment for version '{clean_version}'.")
+        raise
+
+    if backup_dir is not None:
+        try:
+            shutil.rmtree(backup_dir)
+        except OSError:
+            frimanlog.warning(f"Installation succeeded, but the backup remains at '{backup_dir}'.")
 
     frimanlog.success(f"Version '{clean_version}' correctly installed.")

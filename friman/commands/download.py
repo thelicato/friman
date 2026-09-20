@@ -60,6 +60,7 @@ def download(
         for asset in asset_names:
             if asset.startswith(f"frida-{asset_type}"):
                 frimanlog.info(f"  {asset}")
+        raise typer.Exit(1)
 
     chosen_one = candidates[0]
     frimanlog.info(f"Downloading '{chosen_one[0]}' at {chosen_one[1]}...")

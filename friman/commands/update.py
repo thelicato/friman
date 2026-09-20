@@ -25,6 +25,9 @@ def update():
         helpers.download_compatibility_matrix()
         frimanlog.success(f"{definitions.FRIMAN_COMPATIBILITY_MATRIX_FILE} updated!")
     except RateLimitException as ex:
-        frimanlog.error("A rate limit error was encountered while updating list of Frida tags.")
+        frimanlog.error(f"GitHub API rate limit reached while updating metadata: {ex}")
+        frimanlog.info("Set GITHUB_TOKEN to authenticate GitHub requests, or retry after the rate limit resets.")
+        raise typer.Exit(1)
     except Exception as ex:
         frimanlog.error(f"An error occurred while updating the list of Frida tags: {ex}")
+        raise typer.Exit(1)

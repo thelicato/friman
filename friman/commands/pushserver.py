@@ -2,6 +2,7 @@ import shutil
 import tempfile
 import subprocess
 import re
+from pathlib import Path
 from typing_extensions import Annotated
 import typer
 from friman.commands import download
@@ -139,7 +140,7 @@ def push_server(
     # Download Frida server (matching current version) for the specified platform
     frida_server_xz_path = download.download("server", f"android-{platform}", tempfile.gettempdir())
     frida_server_path = helpers.extract_xz(frida_server_xz_path, True)
-    frida_server_name = frida_server_path.split("/")[-1]
+    frida_server_name = Path(frida_server_path).name
 
     # Push it to /data/local/tmp
     adb_push_args = [adb_path, "-s", device_id, "push", frida_server_path, f"/data/local/tmp/{frida_server_name}"]

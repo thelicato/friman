@@ -54,6 +54,26 @@ friman ensurepath # Setup PATH for the currently selected Frida environment
 friman update # Update the local list of available Frida versions and compatibility matrix
 ```
 
+On Windows, `ensurepath` updates the Windows PowerShell profile. CMD does not
+load that profile; put friman first in each CMD session before using Frida:
+
+```cmd
+set "PATH=%USERPROFILE%\.friman\bin;%PATH%"
+friman use 17.17.0
+where frida
+frida --version
+```
+
+For an already-open PowerShell session, run:
+
+```powershell
+$env:PATH = "$env:USERPROFILE\.friman\bin;$env:PATH"
+```
+
+The managed `frida` command must take precedence over older global Python
+installations. `friman use` selects the environment but does not modify its
+parent terminal's PATH.
+
 ## Usage
 
 `friman` provides a command-line interface for installing, switching, and managing multiple versions of Frida. The following is the main help output:

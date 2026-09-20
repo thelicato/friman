@@ -1,11 +1,33 @@
 import os
 import pathlib
+import shutil
+import shlex
 from typing_extensions import Annotated
 import typer
 from friman.utils import definitions, helpers
 from friman.utils.logger import frimanlog
 
 app = typer.Typer()
+
+
+def _warn_if_shadowed(env_path: str):
+    """Switching the symlink cannot change the calling shell's PATH."""
+    command = shutil.which("frida")
+    expected = helpers.get_env_command_path(env_path, "frida")
+    if command and pathlib.Path(command).resolve() == pathlib.Path(expected).resolve():
+        return
+    if command:
+        frimanlog.warning(f"Your PATH still selects another Frida command: {command}")
+    else:
+        frimanlog.warning("The selected Frida command is not on your PATH.")
+    entry = definitions.FRIMAN_BIN_FOLDER
+    frimanlog.info("Put friman first in PATH in your current terminal:")
+    if os.name == "nt":
+        frimanlog.info(f'  CMD: set "PATH={entry};%PATH%"')
+        escaped_entry = entry.replace("'", "''")
+        frimanlog.info(f"  PowerShell: $env:PATH = '{escaped_entry};' + $env:PATH")
+    else:
+        frimanlog.info(f'  sh/bash/zsh: export PATH={shlex.quote(entry)}:"$PATH"')
 
 @app.command()
 def use(version: Annotated[str, typer.Argument(help="The version of Frida to use", metavar="version")]):
@@ -42,3 +64,4 @@ def use(version: Annotated[str, typer.Argument(help="The version of Frida to use
     os.symlink(source_path, symlink_path, target_is_directory=True)
     helpers.create_current_bin_shims()
     frimanlog.success(f"Version in use correctly set to '{clean_version}'. Run 'frida --version' to check.")
+    _warn_if_shadowed(source)

@@ -16,9 +16,10 @@ def get_path_entry(system: str) -> str:
 
 def build_profile_block(system: str, shell: str, path_entry: str) -> str:
     if system == "windows":
+        escaped_path = path_entry.replace("'", "''")
         return (
             f"{FRIMAN_BLOCK_START}\n"
-            f'$env:PATH += ";{path_entry}"\n'
+            f"$env:PATH = '{escaped_path};' + $env:PATH\n"
             f"{FRIMAN_BLOCK_END}\n"
         )
 
@@ -97,17 +98,20 @@ def ensurepath():
     block = build_profile_block(system, shell, path_entry)
 
     contents = profile.read_text(encoding="utf8") if profile.exists() else ""
-    if FRIMAN_BLOCK_START in contents and FRIMAN_BLOCK_END in contents and path_entry in contents:
+    # Match the actual block so old append-to-PATH configurations are migrated.
+    if block in contents:
         frimanlog.info(f"Already added in {profile}")
-        helpers.create_current_bin_shims()
-        return
+    else:
+        cleaned_contents = remove_managed_blocks(contents)
+        new_contents = f"{cleaned_contents}\n{block}" if cleaned_contents else block
 
-    cleaned_contents = remove_managed_blocks(contents)
-    new_contents = f"{cleaned_contents}\n{block}" if cleaned_contents else block
-
-    with open(profile, "w", encoding="utf8") as f:
-        f.write(new_contents)
+        with open(profile, "w", encoding="utf8") as f:
+            f.write(new_contents)
+        frimanlog.success(f"Updated PATH entry in {profile}")
 
     helpers.create_current_bin_shims()
-    frimanlog.success(f"Updated PATH entry in {profile}")
-    frimanlog.info("Restart your terminal for changes to take effect.")
+    if system == "windows":
+        frimanlog.info("The profile change applies to Windows PowerShell. For the current CMD session, run:")
+        frimanlog.info(f'  set "PATH={path_entry};%PATH%"')
+    else:
+        frimanlog.info("Restart your terminal for changes to take effect.")
