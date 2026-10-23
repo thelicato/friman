@@ -1,6 +1,8 @@
 import os
 import platform
 import re
+import ctypes
+from ctypes import wintypes
 from pathlib import Path
 import typer
 from friman.utils import definitions, helpers
@@ -14,11 +16,30 @@ FRIMAN_BLOCK_END = "# <<< friman <<<"
 def get_path_entry(system: str) -> str:
     return definitions.FRIMAN_BIN_FOLDER
 
+def get_windows_documents_path() -> Path:
+    """Resolve the Documents folder, including redirected locations."""
+    folder_id = 5  # CSIDL_PERSONAL
+    buffer = ctypes.create_unicode_buffer(wintypes.MAX_PATH)
+    shell32 = ctypes.windll.shell32
+    shell32.SHGetFolderPathW.argtypes = [
+        wintypes.HWND,
+        ctypes.c_int,
+        wintypes.HANDLE,
+        wintypes.DWORD,
+        wintypes.LPWSTR,
+    ]
+    shell32.SHGetFolderPathW.restype = ctypes.c_long
+    result = shell32.SHGetFolderPathW(None, folder_id, None, 0, buffer)
+    if result < 0:
+        raise OSError(result, "Could not resolve the Windows Documents folder")
+    return Path(buffer.value)
+
 def build_profile_block(system: str, shell: str, path_entry: str) -> str:
     if system == "windows":
+        escaped_path = path_entry.replace("'", "''")
         return (
             f"{FRIMAN_BLOCK_START}\n"
-            f'$env:PATH += ";{path_entry}"\n'
+            f"$env:PATH = '{escaped_path};' + $env:PATH\n"
             f"{FRIMAN_BLOCK_END}\n"
         )
 
@@ -39,7 +60,7 @@ def build_profile_block(system: str, shell: str, path_entry: str) -> str:
 
 def get_shell_profile(system: str, shell: str) -> Path:
     if system == "windows":
-        return Path(os.environ["USERPROFILE"]) / "Documents" / "WindowsPowerShell" / "profile.ps1"
+        return get_windows_documents_path() / "WindowsPowerShell" / "profile.ps1"
 
     shell_name = Path(shell or "").name.lower()
     if shell_name == "fish":
@@ -97,7 +118,7 @@ def ensurepath():
     block = build_profile_block(system, shell, path_entry)
 
     contents = profile.read_text(encoding="utf8") if profile.exists() else ""
-    if FRIMAN_BLOCK_START in contents and FRIMAN_BLOCK_END in contents and path_entry in contents:
+    if block in contents:
         frimanlog.info(f"Already added in {profile}")
         helpers.create_current_bin_shims()
         return
