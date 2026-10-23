@@ -261,7 +261,7 @@ def create_current_bin_shims():
     """Create shims in the managed friman bin folder for the currently selected env."""
     create_folder_if_missing(definitions.FRIMAN_BIN_FOLDER)
 
-    current_bin = os.path.join(definitions.FRIMAN_CURRENT_FOLDER, "bin")
+    current_bin = get_env_bin_path(definitions.FRIMAN_CURRENT_FOLDER)
     if not os.path.isdir(current_bin):
         return
 
@@ -270,7 +270,7 @@ def create_current_bin_shims():
         if not entry.lower().startswith(allowlisted_prefix):
             continue
 
-        source = os.path.join(definitions.FRIMAN_CURRENT_FOLDER, "bin", entry)
+        source = os.path.join(current_bin, entry)
         target = os.path.join(definitions.FRIMAN_BIN_FOLDER, entry)
 
         if os.path.exists(target) or os.path.islink(target):
